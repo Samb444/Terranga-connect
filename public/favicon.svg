@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <rect width="48" height="48" rx="12" fill="#0F172A"/>
+  <!-- Road / Transport path -->
+  <path d="M14 36L20 12h8l6 24h-4l-1.5-6h-9L18 36h-4z" fill="#D97706" opacity="0.2"/>
+  <path d="M19.5 30h9l-4.5-16-4.5 16z" fill="#D97706"/>
+  <!-- Connection node -->
+  <circle cx="24" cy="18" r="4" fill="#F59E0B" stroke="#0F172A" stroke-width="2"/>
+  <circle cx="16" cy="32" r="3" fill="#38BDF8"/>
+  <circle cx="32" cy="32" r="3" fill="#10B981"/>
+  <path d="M16 32l8-14 8 14" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2"/>
+</svg>
