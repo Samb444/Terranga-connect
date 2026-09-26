@@ -60,6 +60,10 @@ export const APPLICATION_STATUS_CONFIG: Record<
 /**
  * Libellés et styles visuels pour les statuts de mission
  */
+/**
+ * Libellés et styles visuels pour les statuts de mission
+ * Cycle canonique Phase 6 : PENDING -> ACCEPTED -> IN_PROGRESS -> COMPLETED (+ CANCELLED)
+ */
 export const MISSION_STATUS_CONFIG: Record<
   MissionStatus,
   {
@@ -68,6 +72,7 @@ export const MISSION_STATUS_CONFIG: Record<
     badgeClass: string
     dotColor: string
     stepIndex: number
+    description: string
   }
 > = {
   interest: {
@@ -76,6 +81,7 @@ export const MISSION_STATUS_CONFIG: Record<
     badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
     dotColor: 'bg-amber-400',
     stepIndex: 0,
+    description: 'Manifestation d’intérêt enregistrée, en attente de formalisation',
   },
   pending: {
     label: 'En attente',
@@ -83,34 +89,39 @@ export const MISSION_STATUS_CONFIG: Record<
     badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
     dotColor: 'bg-amber-400',
     stepIndex: 0,
+    description: 'Mission créée, en attente d’acceptation formelle',
   },
   accepted: {
-    label: 'Acceptée (À confirmer)',
-    variant: 'amber',
-    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    dotColor: 'bg-amber-400',
-    stepIndex: 1,
-  },
-  confirmed: {
-    label: 'Mission confirmée',
+    label: 'Acceptée',
     variant: 'success',
     badgeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     dotColor: 'bg-blue-400',
-    stepIndex: 2,
+    stepIndex: 1,
+    description: 'Mission acceptée, prête pour le départ',
+  },
+  confirmed: {
+    label: 'Acceptée',
+    variant: 'success',
+    badgeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+    dotColor: 'bg-blue-400',
+    stepIndex: 1,
+    description: 'Mission validée et prête pour le départ',
   },
   in_progress: {
     label: 'En cours',
     variant: 'success',
     badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     dotColor: 'bg-emerald-400 animate-pulse',
-    stepIndex: 4,
+    stepIndex: 2,
+    description: 'Camion en route et acheminement du fret en cours',
   },
   completed: {
     label: 'Terminée',
     variant: 'default',
     badgeClass: 'bg-slate-700/50 text-slate-300 border-slate-600/30',
     dotColor: 'bg-slate-400',
-    stepIndex: 5,
+    stepIndex: 3,
+    description: 'Livraison réceptionnée, déchargement et émargement achevés',
   },
   cancelled: {
     label: 'Annulée',
@@ -118,6 +129,7 @@ export const MISSION_STATUS_CONFIG: Record<
     badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
     dotColor: 'bg-rose-400',
     stepIndex: -1,
+    description: 'Mission annulée',
   },
 }
 
@@ -178,8 +190,8 @@ export function calculateMissionEconomics(
 
 /**
  * Génère la timeline de la mission pour l'affichage visuel
- * Respecte le cycle 6 étapes :
- * Candidature -> Acceptation -> Confirmation -> Départ -> En cours -> Terminée
+ * Respecte le cycle 4 étapes explicite :
+ * Mission créée -> Mission acceptée -> Mission en cours -> Mission terminée
  */
 export function buildMissionTimeline(
   status: MissionStatus,
@@ -196,17 +208,21 @@ export function buildMissionTimeline(
 
   return [
     {
-      id: 'application',
-      label: 'Candidature',
-      description: 'Manifestation d’intérêt soumise par le chauffeur',
+      id: 'created',
+      label: 'Mission créée',
+      description: 'Création et enregistrement de l’ordre de transport',
       timestamp: dates.createdAt || 'Jour J',
-      status: 'completed',
+      status: isCancelled
+        ? 'completed'
+        : currentStep > 0
+        ? 'completed'
+        : 'current',
     },
     {
-      id: 'acceptance',
-      label: 'Acceptation',
-      description: 'Candidature validée par le propriétaire',
-      timestamp: dates.acceptedAt || (currentStep >= 1 ? 'Jour J + 2h' : undefined),
+      id: 'accepted',
+      label: 'Mission acceptée',
+      description: 'Validation par les parties et attribution opérationnelle',
+      timestamp: dates.acceptedAt || (currentStep >= 1 ? dates.createdAt || 'Jour J + 2h' : undefined),
       status: isCancelled
         ? 'upcoming'
         : currentStep > 1
@@ -216,10 +232,10 @@ export function buildMissionTimeline(
         : 'upcoming',
     },
     {
-      id: 'confirmation',
-      label: 'Confirmation',
-      description: 'Ordre de transport validé et camion affecté',
-      timestamp: dates.confirmedAt || (currentStep >= 2 ? 'Jour J + 4h' : undefined),
+      id: 'in_progress',
+      label: 'Mission en cours',
+      description: 'Chargement effectué et fret en acheminement sur corridor',
+      timestamp: dates.startedAt || (currentStep >= 2 ? 'En transit' : undefined),
       status: isCancelled
         ? 'upcoming'
         : currentStep > 2
@@ -229,41 +245,72 @@ export function buildMissionTimeline(
         : 'upcoming',
     },
     {
-      id: 'departure',
-      label: 'Départ',
-      description: 'Mise à quai, contrôle chargement et départ du site',
-      timestamp: dates.startedAt || (currentStep >= 4 ? 'Jour J + 1 (Matin)' : undefined),
-      status: isCancelled
-        ? 'upcoming'
-        : currentStep >= 4
-        ? 'completed'
-        : currentStep === 3
-        ? 'current'
-        : 'upcoming',
-    },
-    {
-      id: 'in_progress',
-      label: 'En cours',
-      description: 'Camion en acheminement et transit sur le corridor',
-      timestamp: dates.startedAt || (currentStep >= 4 ? 'Jour J + 1' : undefined),
-      status: isCancelled
-        ? 'upcoming'
-        : currentStep > 4
-        ? 'completed'
-        : currentStep === 4
-        ? 'current'
-        : 'upcoming',
-    },
-    {
       id: 'completed',
-      label: 'Terminée',
-      description: 'Livraison réceptionnée, déchargement et émargement',
-      timestamp: dates.completedAt || (currentStep === 5 ? 'Jour J + 2' : undefined),
+      label: 'Mission terminée',
+      description: 'Livraison réceptionnée, déchargement et émargement achevés',
+      timestamp: dates.completedAt || (currentStep === 3 ? 'Livrée' : undefined),
       status: isCancelled
         ? 'upcoming'
-        : currentStep === 5
+        : currentStep === 3
         ? 'completed'
         : 'upcoming',
     },
   ]
 }
+
+/**
+ * Type d'action de transition autorisée sur une mission
+ */
+export type MissionTransitionAction = 'accept' | 'start' | 'complete' | 'cancel'
+
+/**
+ * Détermine l'action principale autorisée selon le statut
+ * Règle senior : workflow strictement déterministe
+ */
+export function getAvailableMissionAction(status: MissionStatus): {
+  primaryAction: MissionTransitionAction | null
+  primaryLabel: string | null
+  canCancel: boolean
+} {
+  switch (status) {
+    case 'pending':
+    case 'interest':
+      return {
+        primaryAction: 'accept',
+        primaryLabel: 'Accepter la mission',
+        canCancel: true,
+      }
+    case 'accepted':
+    case 'confirmed':
+      return {
+        primaryAction: 'start',
+        primaryLabel: 'Démarrer la mission',
+        canCancel: true,
+      }
+    case 'in_progress':
+      return {
+        primaryAction: 'complete',
+        primaryLabel: 'Terminer la mission',
+        canCancel: true,
+      }
+    case 'completed':
+      return {
+        primaryAction: null,
+        primaryLabel: 'Mission terminée',
+        canCancel: false,
+      }
+    case 'cancelled':
+      return {
+        primaryAction: null,
+        primaryLabel: 'Mission annulée',
+        canCancel: false,
+      }
+    default:
+      return {
+        primaryAction: null,
+        primaryLabel: null,
+        canCancel: false,
+      }
+  }
+}
+

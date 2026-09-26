@@ -12,7 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 
-export type MissionActionType = 'confirm' | 'start' | 'complete' | 'cancel'
+export type MissionActionType = 'accept' | 'confirm' | 'start' | 'complete' | 'cancel'
 
 interface MissionActionModalProps {
   isOpen: boolean
@@ -43,15 +43,25 @@ export const MissionActionModal: React.FC<MissionActionModalProps> = ({
       alertText: string
     }
   > = {
-    confirm: {
-      title: 'Confirmer la mission de transport ?',
-      subtitle: 'Validation finale de l’ordre de mission par le propriétaire.',
-      confirmLabel: 'Confirmer définitivement',
+    accept: {
+      title: 'Accepter la mission de transport ?',
+      subtitle: 'Validation de l’ordre de mission et accord entre les parties.',
+      confirmLabel: 'Accepter la mission',
       icon: <CheckCircle2 className="w-4 h-4 mr-1.5" />,
       buttonVariant: 'primary',
       buttonClass: 'bg-blue-600 hover:bg-blue-500 text-white',
       alertText:
-        'La mission sera fermement confirmée. Le chauffeur pourra ensuite la démarrer au moment du chargement.',
+        'Le statut de la mission passera à « Acceptée ». Le chauffeur pourra ensuite démarrer le trajet dès le chargement effectué.',
+    },
+    confirm: {
+      title: 'Confirmer la mission de transport ?',
+      subtitle: 'Validation finale de l’ordre de mission par le propriétaire.',
+      confirmLabel: 'Confirmer la mission',
+      icon: <CheckCircle2 className="w-4 h-4 mr-1.5" />,
+      buttonVariant: 'primary',
+      buttonClass: 'bg-blue-600 hover:bg-blue-500 text-white',
+      alertText:
+        'La mission sera fermement acceptée et validée. Le chauffeur pourra ensuite la démarrer au moment du chargement.',
     },
     start: {
       title: 'Démarrer le trajet de mission ?',

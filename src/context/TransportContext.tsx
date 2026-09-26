@@ -92,6 +92,7 @@ export interface TransportContextType {
   rejectApplication: (applicationId: string, reason?: string) => boolean
 
   // Cycle Mission
+  acceptMission: (missionId: string) => boolean
   confirmMission: (missionId: string) => boolean
   startMission: (missionId: string) => boolean
   completeMission: (missionId: string) => boolean
@@ -445,7 +446,10 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const newMission: Mission = {
       id: missionId,
       missionCode: `MSN-${originShort}-${destShort}-${codeSuffix}`,
+      title: opp ? opp.title : `Transport de fret ${app.cargo} (${app.origin} → ${app.destination})`,
+      description: opp ? opp.description : `Mission de transport routier entre ${app.origin} et ${app.destination}.`,
       opportunityId: app.opportunityId,
+      opportunityTitle: opp?.title,
       applicationId: app.id,
       ownerId: owner.id,
       ownerName: owner.companyName,
@@ -469,6 +473,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       commissionLabel: economics.commissionPercentLabel,
       status: 'accepted',
       createdAt: 'À l’instant (Démonstration)',
+      acceptedAt: 'À l’instant (Démonstration)',
       timeline: buildMissionTimeline('accepted', {
         createdAt: 'À l’instant',
         acceptedAt: 'À l’instant',
@@ -498,8 +503,8 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Notification côté Chauffeur
     addNotification({
       type: 'mission',
-      title: 'Candidature acceptée ! Mission créée',
-      message: `Votre candidature pour ${app.origin} → ${app.destination} a été acceptée. La mission ${newMission.missionCode} est créée.`,
+      title: 'Mission acceptée',
+      message: `Votre candidature pour ${app.origin} → ${app.destination} a été acceptée. La mission ${newMission.missionCode} est créée et prête pour le départ.`,
       relatedId: newMission.id,
       link: `/missions/${newMission.id}`,
       targetRole: 'driver',
@@ -539,22 +544,69 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true
   }
 
-  // Propriétaire Confirmation Mission
-  const confirmMission = (missionId: string): boolean => {
+  // Acceptation formelle de mission (passage de PENDING à ACCEPTED)
+  const acceptMission = (missionId: string): boolean => {
     const targetMission = missions.find((m) => m.id === missionId)
-    if (!targetMission) return false
+    if (!targetMission || (targetMission.status !== 'pending' && targetMission.status !== 'interest')) {
+      return false
+    }
 
+    const nowStr = 'À l’instant (Acceptée)'
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
-          const nowStr = 'À l’instant (Confirmation)'
           return {
             ...m,
-            status: 'confirmed',
-            timeline: buildMissionTimeline('confirmed', {
+            status: 'accepted',
+            acceptedAt: nowStr,
+            timeline: buildMissionTimeline('accepted', {
               createdAt: m.createdAt,
-              acceptedAt: m.createdAt,
-              confirmedAt: nowStr,
+              acceptedAt: nowStr,
+            }),
+          }
+        }
+        return m
+      })
+    )
+
+    if (targetMission.applicationId) {
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === targetMission.applicationId ? { ...a, status: 'accepted' } : a
+        )
+      )
+    }
+
+    addNotification({
+      type: 'mission',
+      title: 'Mission acceptée',
+      message: `La mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) a été acceptée. Le départ peut être préparé.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
+    return true
+  }
+
+  // Confirmation Mission (conservée pour compatibilité ou transition équivalente)
+  const confirmMission = (missionId: string): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission || (targetMission.status !== 'pending' && targetMission.status !== 'accepted')) {
+      return false
+    }
+
+    const nowStr = 'À l’instant (Acceptée)'
+    setMissions((prev) =>
+      prev.map((m) => {
+        if (m.id === missionId) {
+          return {
+            ...m,
+            status: 'accepted',
+            acceptedAt: nowStr,
+            timeline: buildMissionTimeline('accepted', {
+              createdAt: m.createdAt,
+              acceptedAt: nowStr,
             }),
           }
         }
@@ -565,17 +617,16 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setApplications((prev) =>
       prev.map((a) => {
         if (a.missionId === missionId) {
-          return { ...a, status: 'confirmed' }
+          return { ...a, status: 'accepted' }
         }
         return a
       })
     )
 
-    // Notification de confirmation
     addNotification({
       type: 'mission',
-      title: 'Mission confirmée pour départ',
-      message: `La mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) est confirmée. Le départ peut être enclenché.`,
+      title: 'Mission acceptée',
+      message: `La mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) est prête pour le départ.`,
       relatedId: targetMission.id,
       link: `/missions/${targetMission.id}`,
       targetRole: 'all',
@@ -584,23 +635,25 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true
   }
 
-  // Chauffeur Démarrage Mission
+  // Démarrage Mission (passage de ACCEPTED à IN_PROGRESS)
   const startMission = (missionId: string): boolean => {
     const targetMission = missions.find((m) => m.id === missionId)
-    if (!targetMission) return false
+    // Règle senior : transition autorisée uniquement depuis ACCEPTED (ou confirmed rétrocompat)
+    if (!targetMission || (targetMission.status !== 'accepted' && targetMission.status !== 'confirmed')) {
+      return false
+    }
 
+    const nowStr = 'À l’instant (En route)'
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
-          const nowStr = 'À l’instant (En route)'
           return {
             ...m,
             status: 'in_progress',
             startedAt: nowStr,
             timeline: buildMissionTimeline('in_progress', {
               createdAt: m.createdAt,
-              acceptedAt: m.createdAt,
-              confirmedAt: m.createdAt,
+              acceptedAt: m.acceptedAt || m.createdAt,
               startedAt: nowStr,
             }),
           }
@@ -609,11 +662,10 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
-    // Notification démarrage
     addNotification({
       type: 'mission',
-      title: 'Mission en cours de route',
-      message: `Le camion ${targetMission.truckMatricule} a démarré la mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}).`,
+      title: 'Mission démarrée',
+      message: `Le chauffeur ${targetMission.driverName} a démarré la mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}). Le véhicule ${targetMission.truckMatricule} est en transit.`,
       relatedId: targetMission.id,
       link: `/missions/${targetMission.id}`,
       targetRole: 'all',
@@ -622,23 +674,25 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true
   }
 
-  // Chauffeur Clôture Mission
+  // Clôture Mission (passage de IN_PROGRESS à COMPLETED)
   const completeMission = (missionId: string): boolean => {
     const targetMission = missions.find((m) => m.id === missionId)
-    if (!targetMission) return false
+    // Règle senior : transition autorisée uniquement depuis IN_PROGRESS
+    if (!targetMission || targetMission.status !== 'in_progress') {
+      return false
+    }
 
+    const nowStr = 'À l’instant (Livré)'
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
-          const nowStr = 'À l’instant (Livré)'
           return {
             ...m,
             status: 'completed',
             completedAt: nowStr,
             timeline: buildMissionTimeline('completed', {
               createdAt: m.createdAt,
-              acceptedAt: m.createdAt,
-              confirmedAt: m.createdAt,
+              acceptedAt: m.acceptedAt || m.createdAt,
               startedAt: m.startedAt || m.createdAt,
               completedAt: nowStr,
             }),
@@ -648,20 +702,21 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
-    setApplications((prev) =>
-      prev.map((a) => {
-        if (a.missionId === missionId) {
-          return { ...a, status: 'completed' }
-        }
-        return a
-      })
-    )
+    if (targetMission.applicationId) {
+      setApplications((prev) =>
+        prev.map((a) => {
+          if (a.missionId === missionId) {
+            return { ...a, status: 'completed' }
+          }
+          return a
+        })
+      )
+    }
 
-    // Notification de complétion
     addNotification({
       type: 'mission',
-      title: 'Mission clôturée avec succès',
-      message: `La mission ${targetMission.missionCode} est arrivée à destination (${targetMission.destination}) et a été clôturée.`,
+      title: 'Mission terminée',
+      message: `La mission ${targetMission.missionCode} est arrivée à destination (${targetMission.destination}) et a été clôturée avec succès.`,
       relatedId: targetMission.id,
       link: `/missions/${targetMission.id}`,
       targetRole: 'all',
@@ -670,20 +725,27 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true
   }
 
-  // Annulation Mission
+  // Annulation Mission (autorisée avant complétion)
   const cancelMission = (missionId: string, reason?: string): boolean => {
     const targetMission = missions.find((m) => m.id === missionId)
-    if (!targetMission) return false
+    // Règle senior : impossible d'annuler une mission terminée ou déjà annulée
+    if (!targetMission || targetMission.status === 'completed' || targetMission.status === 'cancelled') {
+      return false
+    }
 
+    const nowStr = 'À l’instant (Annulée)'
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
           return {
             ...m,
             status: 'cancelled',
+            cancelledAt: nowStr,
             notes: reason ? `Annulée : ${reason}` : 'Mission annulée dans la démonstration.',
             timeline: buildMissionTimeline('cancelled', {
               createdAt: m.createdAt,
+              acceptedAt: m.acceptedAt,
+              startedAt: m.startedAt,
             }),
           }
         }
@@ -691,19 +753,21 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
-    setApplications((prev) =>
-      prev.map((a) => {
-        if (a.missionId === missionId) {
-          return { ...a, status: 'cancelled' }
-        }
-        return a
-      })
-    )
+    if (targetMission.applicationId) {
+      setApplications((prev) =>
+        prev.map((a) => {
+          if (a.missionId === missionId) {
+            return { ...a, status: 'cancelled' }
+          }
+          return a
+        })
+      )
+    }
 
     addNotification({
       type: 'mission',
       title: 'Mission annulée',
-      message: `La mission ${targetMission.missionCode} a été annulée.`,
+      message: `La mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) a été annulée.`,
       relatedId: targetMission.id,
       link: `/missions/${targetMission.id}`,
       targetRole: 'all',
@@ -766,6 +830,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         isInterested,
         acceptApplication,
         rejectApplication,
+        acceptMission,
         confirmMission,
         startMission,
         completeMission,

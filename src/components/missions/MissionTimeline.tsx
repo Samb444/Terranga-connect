@@ -4,11 +4,9 @@ import {
   Clock,
   Truck,
   FileCheck2,
-  UserCheck,
   PackageCheck,
   AlertCircle,
   ShieldCheck,
-  Play,
 } from 'lucide-react'
 import type { MissionTimelineStep, MissionStatus } from '../../types'
 import { MISSION_STATUS_CONFIG } from '../../lib/missionUtils'
@@ -23,11 +21,9 @@ export const MissionTimeline: React.FC<MissionTimelineProps> = ({ timeline, stat
 
   const stepIcons = [
     <FileCheck2 key="0" className="w-4 h-4" />,
-    <UserCheck key="1" className="w-4 h-4" />,
-    <ShieldCheck key="2" className="w-4 h-4" />,
-    <Play key="3" className="w-4 h-4 fill-current" />,
-    <Truck key="4" className="w-4 h-4" />,
-    <PackageCheck key="5" className="w-4 h-4" />,
+    <ShieldCheck key="1" className="w-4 h-4" />,
+    <Truck key="2" className="w-4 h-4" />,
+    <PackageCheck key="3" className="w-4 h-4" />,
   ]
 
   return (
@@ -41,7 +37,7 @@ export const MissionTimeline: React.FC<MissionTimelineProps> = ({ timeline, stat
             </span>
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Suivi des jalons depuis la manifestation d’intérêt jusqu'au déchargement.
+            Suivi des jalons opérationnels : de la création à la livraison terminée.
           </p>
         </div>
 

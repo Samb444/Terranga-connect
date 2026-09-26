@@ -8,21 +8,35 @@ import {
   User,
   RotateCcw,
   ChevronRight,
+  CheckCircle2,
+  Play,
+  CheckCheck,
+  Building2,
 } from 'lucide-react'
 import type { Mission } from '../../types'
-import { MISSION_STATUS_CONFIG, formatFcfa } from '../../lib/missionUtils'
+import {
+  MISSION_STATUS_CONFIG,
+  formatFcfa,
+  getAvailableMissionAction,
+  type MissionTransitionAction,
+} from '../../lib/missionUtils'
 import { Card, CardHeader, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 
 interface MissionCardProps {
   mission: Mission
+  onAction?: (mission: Mission, actionType: MissionTransitionAction) => void
 }
 
-export const MissionCard: React.FC<MissionCardProps> = ({ mission }) => {
+export const MissionCard: React.FC<MissionCardProps> = ({ mission, onAction }) => {
   const statusCfg =
     MISSION_STATUS_CONFIG[mission.status] || MISSION_STATUS_CONFIG.pending
   const isReturn = mission.tripType === 'return_cargo'
+  const actionInfo = getAvailableMissionAction(mission.status)
+
+  const cardTitle =
+    mission.title || `Transport de fret ${mission.cargo} (${mission.origin} → ${mission.destination})`
 
   return (
     <Card className="bg-slate-900/80 border-slate-800 hover:border-slate-700/80 transition-all flex flex-col justify-between group shadow-lg">
@@ -56,8 +70,18 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission }) => {
         </CardHeader>
 
         <CardContent className="space-y-4 pt-1">
+          {/* Titre de la mission */}
+          <div>
+            <h3 className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+              {cardTitle}
+            </h3>
+            <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
+              {mission.description || mission.cargo}
+            </p>
+          </div>
+
           {/* Corridor Origine -> Destination */}
-          <div className="flex items-center gap-2.5 text-base sm:text-lg font-bold text-white group-hover:text-amber-400 transition-colors">
+          <div className="flex items-center gap-2.5 text-base sm:text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
             <div className="flex items-center gap-1.5 text-slate-100">
               <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
               <span>{mission.origin}</span>
@@ -72,7 +96,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission }) => {
             </span>
           </div>
 
-          {/* Marchandise */}
+          {/* Marchandise & date */}
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1 text-[10px] uppercase font-semibold">
@@ -84,7 +108,26 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission }) => {
             <p className="text-sm font-medium text-white line-clamp-1">{mission.cargo}</p>
           </div>
 
-          {/* Grille informations matériel et chauffeur */}
+          {/* Personnes concernées : Donneur et Prestataire */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-lg bg-slate-950/40 border border-slate-800/60 space-y-0.5">
+              <span className="text-slate-400 text-[10px] uppercase block font-medium">Donneur d'ordre</span>
+              <div className="flex items-center gap-1 mt-0.5 text-slate-200 font-semibold truncate">
+                <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="truncate">{mission.ownerName}</span>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-slate-950/40 border border-slate-800/60 space-y-0.5">
+              <span className="text-slate-400 text-[10px] uppercase block font-medium">Chauffeur assigné</span>
+              <div className="flex items-center gap-1 mt-0.5 text-slate-200 font-semibold truncate">
+                <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">{mission.driverName}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Véhicule & Tarif */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2.5 rounded-lg bg-slate-950/40 border border-slate-800/60 space-y-0.5">
               <span className="text-slate-400 text-[10px] uppercase block">Véhicule affecté</span>
@@ -94,99 +137,105 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission }) => {
               </div>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-slate-950/40 border border-slate-800/60 space-y-0.5">
-              <span className="text-slate-400 text-[10px] uppercase block">Chauffeur assigné</span>
-              <div className="flex items-center gap-1 mt-0.5 text-slate-200 font-semibold truncate">
-                <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">{mission.driverName}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Modèle économique indicatif */}
-          <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs">
-            <div>
+            <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-0.5">
               <span className="text-[10px] uppercase text-slate-400 block font-medium">
-                Montant fret estimé
+                Montant fret convenu
               </span>
-              <span className="text-sm font-bold text-white">
+              <span className="text-xs sm:text-sm font-bold text-white block truncate">
                 {mission.estimatedAmountFcfa
                   ? formatFcfa(mission.estimatedAmountFcfa)
                   : mission.estimatedPrice}
               </span>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase text-slate-400 block font-medium">
-                Commission indicative
-              </span>
-              <span className="text-xs font-semibold text-amber-400">
-                {mission.commissionAmountFcfa
-                  ? formatFcfa(mission.commissionAmountFcfa)
-                  : mission.commissionLabel}
-              </span>
-            </div>
           </div>
 
-          {/* Étape actuelle dans le cycle */}
+          {/* Étape actuelle dans le cycle (Cycle canonique à 4 étapes) */}
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-[11px] text-slate-400">
               <span>Cycle de mission</span>
               <span className="text-slate-300 font-medium">{statusCfg.label}</span>
             </div>
-            <div className="grid grid-cols-6 gap-1 h-1.5 rounded-full overflow-hidden bg-slate-800">
+            <div className="grid grid-cols-4 gap-1.5 h-1.5 rounded-full overflow-hidden bg-slate-800">
               <div
                 className={`h-full ${
                   statusCfg.stepIndex >= 0 ? 'bg-amber-400' : 'bg-slate-700'
                 }`}
-                title="1. Candidature"
+                title="1. Mission créée"
               />
               <div
                 className={`h-full ${
-                  statusCfg.stepIndex >= 1 ? 'bg-amber-400' : 'bg-slate-700'
+                  statusCfg.stepIndex >= 1 ? 'bg-blue-400' : 'bg-slate-700'
                 }`}
-                title="2. Acceptation"
+                title="2. Mission acceptée"
               />
               <div
                 className={`h-full ${
-                  statusCfg.stepIndex >= 2 ? 'bg-blue-400' : 'bg-slate-700'
+                  statusCfg.stepIndex >= 2 ? 'bg-emerald-400' : 'bg-slate-700'
                 }`}
-                title="3. Confirmation"
+                title="3. Mission en cours"
               />
               <div
                 className={`h-full ${
-                  statusCfg.stepIndex >= 3 ? 'bg-blue-300' : 'bg-slate-700'
+                  statusCfg.stepIndex >= 3 ? 'bg-emerald-500' : 'bg-slate-700'
                 }`}
-                title="4. Départ"
+                title="4. Mission terminée"
               />
-              <div
-                className={`h-full ${
-                  statusCfg.stepIndex >= 4 ? 'bg-emerald-400' : 'bg-slate-700'
-                }`}
-                title="5. En cours"
-              />
-              <div
-                className={`h-full ${
-                  statusCfg.stepIndex >= 5 ? 'bg-emerald-500' : 'bg-slate-700'
-                }`}
-                title="6. Terminée"
-              />
+            </div>
+            <div className="flex justify-between text-[9px] text-slate-400 px-0.5">
+              <span>Créée</span>
+              <span>Acceptée</span>
+              <span>En cours</span>
+              <span>Terminée</span>
             </div>
           </div>
         </CardContent>
       </div>
 
-      {/* Pied de carte avec CTA */}
-      <div className="p-4 sm:p-5 pt-3 mt-3 border-t border-slate-800/80 bg-slate-950/40 -mx-6 -mb-6 rounded-b-xl px-6 flex items-center justify-between gap-3">
+      {/* Pied de carte avec Action Principale et CTA Détails */}
+      <div className="p-4 sm:p-5 pt-3 mt-3 border-t border-slate-800/80 bg-slate-950/40 -mx-6 -mb-6 rounded-b-xl px-6 flex flex-wrap items-center justify-between gap-2.5">
         <span className="text-[11px] text-slate-400 truncate">
           Créée le {mission.createdAt}
         </span>
 
-        <Link to={`/missions/${mission.id}`}>
-          <Button variant="outline" size="sm" className="group-hover:border-amber-500/50 text-xs">
-            <span>Détails & Suivi</span>
-            <ChevronRight className="w-3.5 h-3.5 ml-1 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Action principale selon statut */}
+          {actionInfo.primaryAction && onAction ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => onAction(mission, actionInfo.primaryAction!)}
+              className={`text-xs font-bold ${
+                actionInfo.primaryAction === 'accept'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                  : actionInfo.primaryAction === 'start'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
+            >
+              {actionInfo.primaryAction === 'accept' && <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+              {actionInfo.primaryAction === 'start' && <Play className="w-3.5 h-3.5 mr-1 fill-current" />}
+              {actionInfo.primaryAction === 'complete' && <CheckCheck className="w-3.5 h-3.5 mr-1" />}
+              <span>{actionInfo.primaryLabel}</span>
+            </Button>
+          ) : mission.status === 'completed' ? (
+            <Badge variant="default" className="text-[11px] py-1 px-2.5 bg-slate-800 text-slate-300">
+              <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-400" />
+              <span>Mission terminée</span>
+            </Badge>
+          ) : mission.status === 'cancelled' ? (
+            <Badge variant="danger" className="text-[11px] py-1 px-2.5">
+              <span>Mission annulée</span>
+            </Badge>
+          ) : null}
+
+          {/* Lien vers le détail */}
+          <Link to={`/missions/${mission.id}`}>
+            <Button variant="outline" size="sm" className="group-hover:border-amber-500/50 text-xs">
+              <span>Détails</span>
+              <ChevronRight className="w-3.5 h-3.5 ml-1 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </Card>
   )

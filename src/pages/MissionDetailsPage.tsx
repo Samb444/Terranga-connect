@@ -35,6 +35,7 @@ export const MissionDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const {
     getMissionById,
+    acceptMission,
     confirmMission,
     startMission,
     completeMission,
@@ -42,7 +43,7 @@ export const MissionDetailsPage: React.FC = () => {
   } = useTransport()
 
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false)
-  const [modalAction, setModalAction] = useState<MissionActionType>('confirm')
+  const [modalAction, setModalAction] = useState<MissionActionType>('start')
   const [isActionModalOpen, setIsActionModalOpen] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
 
@@ -83,9 +84,12 @@ export const MissionDetailsPage: React.FC = () => {
   }
 
   const handleConfirmAction = (missionId: string, actionType: MissionActionType) => {
-    if (actionType === 'confirm') {
+    if (actionType === 'accept') {
+      acceptMission(missionId)
+      setFeedbackMessage('Mission acceptée avec succès ! Le départ peut désormais être préparé.')
+    } else if (actionType === 'confirm') {
       confirmMission(missionId)
-      setFeedbackMessage('Mission confirmée avec succès par le propriétaire !')
+      setFeedbackMessage('Mission validée avec succès !')
     } else if (actionType === 'start') {
       startMission(missionId)
       setFeedbackMessage('Trajet démarré ! La mission est désormais en cours d’acheminement.')
@@ -163,33 +167,47 @@ export const MissionDetailsPage: React.FC = () => {
               </div>
 
               <Badge variant="outline" className="text-xs text-slate-400 py-1 px-3">
-                Démonstration Phase 4
+                Démonstration Phase 6
               </Badge>
             </div>
 
-            {/* Titre & corridor principal */}
+            {/* Titre & Description de la mission */}
             <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-3 text-2xl sm:text-3xl font-extrabold text-white">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-6 h-6 text-amber-400 shrink-0" />
-                  <span>{mission.origin}</span>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400 shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-6 h-6 text-emerald-400 shrink-0" />
-                  <span>{mission.destination}</span>
-                </div>
-                <span className="text-sm font-normal text-slate-400">
-                  (~{mission.estimatedDistance} km)
-                </span>
-              </div>
-              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                {mission.cargo} &bull; Matériel affecté : {mission.truckType}
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                {mission.title || `Transport de fret ${mission.cargo} (${mission.origin} → ${mission.destination})`}
+              </h1>
+              <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
+                {mission.description || `Mission de transport routier de ${mission.cargo} entre ${mission.origin} et ${mission.destination}.`}
               </p>
+            </div>
+
+            {/* Corridor principal */}
+            <div className="flex flex-wrap items-center gap-3 text-lg sm:text-xl font-bold text-white pt-1">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-5 h-5 text-amber-400 shrink-0" />
+                <span>{mission.origin}</span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>{mission.destination}</span>
+              </div>
+              <span className="text-xs font-normal text-slate-400">
+                (~{mission.estimatedDistance} km)
+              </span>
             </div>
 
             {/* Métriques clés en ligne */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                <span className="text-slate-400 text-[10px] uppercase block font-medium">
+                  Créée le
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-white block mt-0.5 truncate">
+                  {mission.createdAt}
+                </span>
+              </div>
+
               <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
                 <span className="text-slate-400 text-[10px] uppercase block font-medium">
                   Date de départ
@@ -205,15 +223,6 @@ export const MissionDetailsPage: React.FC = () => {
                 </span>
                 <span className="text-xs sm:text-sm font-bold text-amber-400 block mt-0.5 truncate">
                   {mission.truckMatricule}
-                </span>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <span className="text-slate-400 text-[10px] uppercase block font-medium">
-                  Chauffeur
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-white block mt-0.5 truncate">
-                  {mission.driverName}
                 </span>
               </div>
 
@@ -326,29 +335,29 @@ export const MissionDetailsPage: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {/* Action Propriétaire : Confirmer */}
-                {mission.status === 'accepted' && (
+                {/* Action : Accepter la mission (si pending ou interest) */}
+                {(mission.status === 'pending' || mission.status === 'interest') && (
                   <div className="space-y-2">
                     <span className="text-[10px] text-slate-400 uppercase font-medium block">
-                      Rôle Propriétaire :
+                      Action disponible :
                     </span>
                     <Button
                       variant="primary"
                       size="md"
-                      onClick={() => handleOpenActionModal('confirm')}
+                      onClick={() => handleOpenActionModal('accept')}
                       className="w-full justify-center bg-blue-600 hover:bg-blue-500 text-white shadow-blue-950/30 text-xs font-bold"
                     >
                       <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                      <span>Confirmer la mission</span>
+                      <span>Accepter la mission</span>
                     </Button>
                   </div>
                 )}
 
-                {/* Action Chauffeur : Démarrer */}
-                {mission.status === 'confirmed' && (
+                {/* Action : Démarrer la mission (si accepted ou confirmed) */}
+                {(mission.status === 'accepted' || mission.status === 'confirmed') && (
                   <div className="space-y-2">
                     <span className="text-[10px] text-slate-400 uppercase font-medium block">
-                      Rôle Chauffeur :
+                      Action disponible :
                     </span>
                     <Button
                       variant="primary"
@@ -362,11 +371,11 @@ export const MissionDetailsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Action Chauffeur : Terminer */}
+                {/* Action : Terminer la mission (si in_progress) */}
                 {mission.status === 'in_progress' && (
                   <div className="space-y-2">
                     <span className="text-[10px] text-slate-400 uppercase font-medium block">
-                      Rôle Chauffeur :
+                      Action disponible :
                     </span>
                     <Button
                       variant="primary"
@@ -375,7 +384,7 @@ export const MissionDetailsPage: React.FC = () => {
                       className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30 text-xs font-bold"
                     >
                       <CheckCheck className="w-4 h-4 mr-1.5" />
-                      <span>Marquer comme terminée</span>
+                      <span>Terminer la mission</span>
                     </Button>
                   </div>
                 )}
@@ -384,9 +393,20 @@ export const MissionDetailsPage: React.FC = () => {
                 {mission.status === 'completed' && (
                   <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 text-center space-y-1">
                     <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto" />
-                    <p className="font-bold">Mission terminée avec succès</p>
+                    <p className="font-bold">Mission terminée</p>
                     <p className="text-[11px] text-emerald-300/80">
-                      Le cycle complet a été simulé et validé.
+                      Le cycle complet a été clôturé et validé avec succès.
+                    </p>
+                  </div>
+                )}
+
+                {/* État mission annulée */}
+                {mission.status === 'cancelled' && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 text-center space-y-1">
+                    <AlertTriangle className="w-6 h-6 text-rose-400 mx-auto" />
+                    <p className="font-bold">Mission annulée</p>
+                    <p className="text-[11px] text-rose-300/80">
+                      Cette mission a été annulée dans la démonstration.
                     </p>
                   </div>
                 )}

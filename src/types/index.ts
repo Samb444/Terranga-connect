@@ -156,6 +156,9 @@ export interface Mission {
   truckId: string
   truckMatricule: string
   truckType: string
+  title?: string
+  description?: string
+  opportunityTitle?: string
   origin: string
   destination: string
   departureDate: string
@@ -170,8 +173,10 @@ export interface Mission {
   commissionLabel: string
   status: MissionStatus
   createdAt: string
+  acceptedAt?: string
   startedAt?: string
   completedAt?: string
+  cancelledAt?: string
   timeline: MissionTimelineStep[]
   notes?: string
   isDemo: boolean
