@@ -5,11 +5,12 @@ import {
   Handshake,
   MapPin,
   RotateCcw,
-  Sparkles,
   UserCheck,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
 import { DRIVER_ADVANTAGES } from '../data/constants'
 
 export const DriversSection: React.FC = () => {
@@ -57,11 +58,13 @@ export const DriversSection: React.FC = () => {
             </p>
           </div>
 
-          <div className="shrink-0">
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Fonctionnalités cibles &bull; À venir</span>
-            </span>
+          <div className="shrink-0 flex items-center gap-3">
+            <Link to="/chauffeur">
+              <Button variant="secondary" size="sm" className="border-emerald-500/40 hover:bg-emerald-950/30">
+                <UserCheck className="w-4 h-4 mr-1.5 text-emerald-400" />
+                <span>Tester l'espace Chauffeur</span>
+              </Button>
+            </Link>
           </div>
         </div>
 

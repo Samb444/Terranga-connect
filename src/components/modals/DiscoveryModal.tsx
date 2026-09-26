@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
-import { X, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { X, Sparkles, ArrowRight, Truck, UserCheck, Compass } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { APP_CONFIG } from '../../data/constants'
@@ -29,15 +30,14 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({ isOpen, onClose 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="discovery-modal-title"
-      aria-describedby="discovery-modal-description"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 shadow-2xl transition-all"
+        className="relative w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 shadow-2xl transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Bouton de fermeture accessible */}
@@ -45,7 +45,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({ isOpen, onClose 
           ref={closeButtonRef}
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors cursor-pointer"
           aria-label="Fermer la fenêtre d'information"
         >
           <X className="w-5 h-5" />
@@ -55,62 +55,80 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({ isOpen, onClose 
         <div className="flex items-center gap-2 mb-3">
           <Badge variant="amber" className="py-1 px-2.5">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Prototype &bull; Accès anticipé</span>
+            <span>Prototype Phase 3 &bull; Première interface produit</span>
           </Badge>
           <span className="text-xs text-slate-400">{APP_CONFIG.phase}</span>
         </div>
 
         <h3 id="discovery-modal-title" className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-          Rejoindre l'aventure Teranga Connect
+          Accéder à la démonstration interactive
         </h3>
 
-        <div id="discovery-modal-description" className="mt-4 space-y-4 text-sm text-slate-300 leading-relaxed">
-          <p>
-            <strong className="text-white">Teranga Connect</strong> est actuellement en cours de conception et de développement technique. 
-            Aucun compte utilisateur ni paiement n'est exigé à ce stade.
-          </p>
+        <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+          Choisissez votre parcours utilisateur pour explorer l'interface produit de Teranga Connect.
+          Aucun compte réel ni paiement n'est exigé : toutes les données sont locales.
+        </p>
 
-          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/90 space-y-2.5">
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-              <span>Conception ciblée pour le fret routier sénégalais et sous-régional.</span>
+        {/* Choix du parcours : Propriétaire ou Chauffeur */}
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link
+            to="/proprietaire"
+            onClick={onClose}
+            className="p-5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-950 hover:border-amber-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+          >
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-3 group-hover:scale-105 transition-transform">
+                <Truck className="w-5 h-5" />
+              </div>
+              <h4 className="font-bold text-white text-base group-hover:text-amber-400 transition-colors">
+                Propriétaire de camion
+              </h4>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Supervisez votre flotte, publiez un fret et trouvez des retours à vide.
+              </p>
             </div>
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-              <span>Priorité donnée à la réduction des retours à vide des camions.</span>
+            <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center text-xs font-semibold text-amber-400">
+              <span>Ouvrir l'espace Propriétaire</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-1 transition-transform" />
             </div>
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-              <span>Préparation des modules opérationnels propriétaires et chauffeurs.</span>
-            </div>
-          </div>
+          </Link>
 
-          <p className="text-xs text-slate-400">
-            Les prochaines phases intégreront les formulaires de pré-enregistrement et les espaces dédiés aux propriétaires de flottes et aux chauffeurs.
-          </p>
+          <Link
+            to="/chauffeur"
+            onClick={onClose}
+            className="p-5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-950 hover:border-emerald-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+          >
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-105 transition-transform">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <h4 className="font-bold text-white text-base group-hover:text-emerald-400 transition-colors">
+                Chauffeur professionnel
+              </h4>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Indiquez votre disponibilité, recherchez une mission et suivez vos trajets.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center text-xs font-semibold text-emerald-400">
+              <span>Ouvrir l'espace Chauffeur</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-800">
-          <Button
-            variant="outline"
-            size="md"
-            className="w-full sm:w-auto"
+        {/* Lien direct opportunités */}
+        <div className="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <Link
+            to="/opportunites"
             onClick={onClose}
+            className="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-amber-400 transition-colors"
           >
+            <Compass className="w-4 h-4 text-amber-400" />
+            <span>Consulter le catalogue des opportunités de fret &rarr;</span>
+          </Link>
+
+          <Button variant="outline" size="sm" onClick={onClose} className="w-full sm:w-auto">
             Fermer
-          </Button>
-          <Button
-            variant="primary"
-            size="md"
-            className="w-full sm:w-auto"
-            onClick={() => {
-              onClose()
-              const target = document.getElementById('fonctionnement')
-              target?.scrollIntoView({ behavior: 'smooth' })
-            }}
-          >
-            <span>Découvrir le fonctionnement</span>
-            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>

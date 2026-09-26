@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Truck, Menu, X, ArrowRight } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Truck, Menu, X, ArrowRight, Compass } from 'lucide-react'
 import { APP_CONFIG, NAV_LINKS } from '../data/constants'
 import { Button } from '../components/ui/Button'
 
@@ -10,6 +11,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,6 +36,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault()
     setIsMobileMenuOpen(false)
+
+    if (location.pathname !== '/') {
+      navigate(`/${href}`)
+      return
+    }
+
     const targetId = href.replace('#', '')
     const targetElement = document.getElementById(targetId)
     if (targetElement) {
@@ -50,9 +59,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Logo & Identité Teranga Connect */}
-        <a
-          href="#accueil"
-          onClick={(e) => handleNavClick(e, '#accueil')}
+        <Link
+          to="/"
           className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg p-1"
           aria-label="Retour en haut de page - Teranga Connect"
         >
@@ -67,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
               Fret &bull; Réseau Routier
             </span>
           </div>
-        </a>
+        </Link>
 
         {/* Navigation Desktop */}
         <nav className="hidden md:flex items-center gap-1 lg:gap-2" aria-label="Navigation principale">
@@ -81,6 +89,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
               {link.label}
             </a>
           ))}
+
+          {/* Lien direct Opportunités */}
+          <Link
+            to="/opportunites"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 rounded-lg transition-colors ml-1"
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Opportunités</span>
+          </Link>
         </nav>
 
         {/* Action Header Desktop */}
@@ -106,11 +123,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-navigation"
           >
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
@@ -133,7 +146,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
               </a>
             ))}
 
-            <div className="pt-4 mt-2 border-t border-slate-800">
+            <Link
+              to="/opportunites"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between px-4 py-3 text-base font-semibold text-amber-300 bg-amber-500/10 rounded-lg border border-amber-500/20"
+            >
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4" />
+                <span>Opportunités de transport</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <div className="pt-4 mt-2 border-t border-slate-800 space-y-2">
               <Button
                 variant="primary"
                 size="md"
@@ -146,6 +171,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
                 <span>Rejoindre Teranga Connect</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Link
+                  to="/proprietaire"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="py-2.5 px-3 rounded-lg text-center text-xs font-medium bg-slate-900 border border-slate-800 text-amber-300"
+                >
+                  Espace Propriétaire
+                </Link>
+                <Link
+                  to="/chauffeur"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="py-2.5 px-3 rounded-lg text-center text-xs font-medium bg-slate-900 border border-slate-800 text-emerald-300"
+                >
+                  Espace Chauffeur
+                </Link>
+              </div>
             </div>
           </nav>
         </div>

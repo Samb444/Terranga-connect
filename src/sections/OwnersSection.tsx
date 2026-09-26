@@ -6,10 +6,11 @@ import {
   Target,
   BarChart3,
   Clock,
-  Sparkles,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
 import { OWNER_ADVANTAGES } from '../data/constants'
 
 export const OwnersSection: React.FC = () => {
@@ -57,11 +58,13 @@ export const OwnersSection: React.FC = () => {
             </p>
           </div>
 
-          <div className="shrink-0">
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Modules en cours d'élaboration</span>
-            </span>
+          <div className="shrink-0 flex items-center gap-3">
+            <Link to="/proprietaire">
+              <Button variant="primary" size="sm" className="shadow-md shadow-amber-950/20">
+                <Truck className="w-4 h-4 mr-1.5" />
+                <span>Tester l'espace Propriétaire</span>
+              </Button>
+            </Link>
           </div>
         </div>
 

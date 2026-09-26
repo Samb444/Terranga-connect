@@ -1,17 +1,11 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { Truck, UserCheck, ArrowRight, ShieldCheck } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CorridorVisual } from '../components/visual/CorridorVisual'
 
 export const HeroSection: React.FC = () => {
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
-    }
-  }
-
   return (
     <section
       id="accueil"
@@ -49,28 +43,30 @@ export const HeroSection: React.FC = () => {
               Teranga Connect facilite la mise en relation entre propriétaires de camions et chauffeurs afin d'optimiser les trajets et de réduire les retours à vide.
             </p>
 
-            {/* Deux CTA requis */}
+            {/* Deux CTA fonctionnels vers les espaces produit */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => scrollTo('proprietaires')}
-                className="w-full sm:w-auto shadow-lg shadow-amber-950/30"
-              >
-                <Truck className="w-5 h-5 mr-1" />
-                <span>Je suis propriétaire de camion</span>
-              </Button>
+              <Link to="/proprietaire" className="w-full sm:w-auto">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full sm:w-auto shadow-lg shadow-amber-950/30"
+                >
+                  <Truck className="w-5 h-5 mr-1" />
+                  <span>Je suis propriétaire de camion</span>
+                </Button>
+              </Link>
 
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => scrollTo('chauffeurs')}
-                className="w-full sm:w-auto"
-              >
-                <UserCheck className="w-5 h-5 mr-1 text-amber-400" />
-                <span>Je suis chauffeur</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
+              <Link to="/chauffeur" className="w-full sm:w-auto">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  <UserCheck className="w-5 h-5 mr-1 text-amber-400" />
+                  <span>Je suis chauffeur</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
             </div>
 
             {/* Repères contextuels clés */}
