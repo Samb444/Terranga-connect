@@ -1,4 +1,4 @@
-import type { Truck, Driver, Owner, Opportunity, Trip, TruckCategory } from '../types'
+import type { Truck, Driver, Owner, Opportunity, Trip, TruckCategory, AppNotification } from '../types'
 import { buildMissionTimeline } from '../lib/missionUtils'
 
 /**
@@ -39,11 +39,12 @@ export const MOCK_OWNER: Owner = {
   id: 'owner-demo-1',
   fullName: 'Mamadou Diop',
   companyName: 'Transports Teranga Fret SARL',
-  phone: '+221 77 *** ** 89',
+  phone: '+221 77 *** ** 89 [Fictif]',
   city: 'Dakar (Zone Industrielle)',
   truckCount: 3,
   activeMissionsCount: 1,
   isDemo: true,
+  memberSince: '15 Janvier 2026 [Démonstration]',
 }
 
 /**
@@ -52,7 +53,7 @@ export const MOCK_OWNER: Owner = {
 export const MOCK_DRIVER: Driver = {
   id: 'driver-demo-1',
   fullName: 'Ibrahima Ndiaye',
-  phone: '+221 77 *** ** 42',
+  phone: '+221 77 *** ** 42 [Fictif]',
   licenseType: 'Permis C/E (Poids Lourd + Remorque)',
   experienceYears: 8,
   isVerified: true,
@@ -62,6 +63,7 @@ export const MOCK_DRIVER: Driver = {
   preferredCorridors: ['Dakar - Thiès', 'Dakar - Kaolack', 'Dakar - Touba'],
   tripsCompleted: 142,
   isDemo: true,
+  memberSince: '02 Février 2026 [Démonstration]',
 }
 
 /**
@@ -622,6 +624,71 @@ export const MOCK_TRIPS: Trip[] = [
     estimatedArrival: '2026-09-24 à 12:00',
     isReturnTrip: false,
     isDemo: true,
+  },
+]
+
+/**
+ * Notifications initiales de démonstration
+ */
+export const MOCK_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-demo-1',
+    type: 'application',
+    title: 'Nouvelle candidature reçue',
+    message:
+      'Ibrahima Ndiaye [Chauffeur Démo] a manifesté son intérêt pour votre opportunité : Acheminement produits conditionnés (Dakar → Thiès).',
+    read: false,
+    createdAt: 'Aujourd’hui à 09:15',
+    relatedId: 'app-demo-1',
+    link: '/proprietaire',
+    targetRole: 'truck_owner',
+  },
+  {
+    id: 'notif-demo-2',
+    type: 'mission',
+    title: 'Mission en cours de route',
+    message:
+      'Le semi-remorque benne (DK-****-B2) est actuellement en transit sur l’axe Thiès → Dakar (Retour optimisé).',
+    read: false,
+    createdAt: 'Ce matin à 07:30',
+    relatedId: 'mission-demo-3',
+    link: '/missions/mission-demo-3',
+    targetRole: 'all',
+  },
+  {
+    id: 'notif-demo-3',
+    type: 'mission',
+    title: 'Mission confirmée',
+    message:
+      'La mission MSN-DKR-KLK-02 vers Kaolack est confirmée par le transporteur. Le départ est planifié.',
+    read: true,
+    createdAt: 'Hier à 14:00',
+    relatedId: 'mission-demo-2',
+    link: '/missions/mission-demo-2',
+    targetRole: 'driver',
+  },
+  {
+    id: 'notif-demo-4',
+    type: 'opportunity',
+    title: 'Opportunité de retour disponible',
+    message:
+      'Une opportunité de retour à vide Kaolack → Dakar (20T Arachides) correspond à votre zone de rotation.',
+    read: true,
+    createdAt: 'Il y a 2 jours',
+    relatedId: 'opp-demo-5',
+    link: '/opportunites/opp-demo-5',
+    targetRole: 'truck_owner',
+  },
+  {
+    id: 'notif-demo-5',
+    type: 'system',
+    title: 'Session de démonstration active',
+    message:
+      'Bienvenue sur Teranga Connect Phase 5. Toutes vos modifications sont conservées localement dans votre navigateur.',
+    read: true,
+    createdAt: '2026-09-26',
+    link: '/profil',
+    targetRole: 'all',
   },
 ]
 

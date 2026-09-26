@@ -14,6 +14,7 @@ import {
   MapPin,
   ClipboardList,
   CheckCheck,
+  Bell,
 } from 'lucide-react'
 import { DashboardLayout, type NavItemConfig } from '../layouts/DashboardLayout'
 import { StatCard } from '../components/dashboard/StatCard'
@@ -27,7 +28,14 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { useTransport } from '../hooks/useTransport'
 
 export const DriverDashboardPage: React.FC = () => {
-  const { driver, opportunities, applications, missions, driverStatus } = useTransport()
+  const {
+    driver,
+    opportunities,
+    applications,
+    missions,
+    driverStatus,
+    unreadNotificationsCount,
+  } = useTransport()
 
   const [activeTab, setActiveTab] = useState<string>('dashboard')
 
@@ -74,7 +82,14 @@ export const DriverDashboardPage: React.FC = () => {
       icon: <CheckCircle2 className="w-4 h-4" />,
       badge: driverStatus === 'available' ? 'Dispo' : 'Repos',
     },
-    { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" /> },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: <Bell className="w-4 h-4" />,
+      badge: unreadNotificationsCount > 0 ? String(unreadNotificationsCount) : undefined,
+      route: '/notifications',
+    },
+    { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" />, route: '/profil' },
   ]
 
   return (
@@ -104,7 +119,7 @@ export const DriverDashboardPage: React.FC = () => {
                 <span>Espace Chauffeur Professionnel</span>
               </Badge>
               <Badge variant="outline" className="text-[11px] text-slate-400 py-0.5 px-2">
-                Données de démonstration Phase 4
+                Données de démonstration Phase 5
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">

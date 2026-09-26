@@ -1,4 +1,4 @@
-import React, { createContext, useState } from 'react'
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react'
 import type {
   Truck,
   Driver,
@@ -7,6 +7,7 @@ import type {
   Trip,
   Application,
   Mission,
+  AppNotification,
 } from '../types'
 import {
   MOCK_OWNER,
@@ -16,15 +17,29 @@ import {
   MOCK_TRIPS,
   MOCK_APPLICATIONS,
   MOCK_MISSIONS,
+  MOCK_NOTIFICATIONS,
 } from '../data/mockData'
 import {
   calculateMissionEconomics,
   buildMissionTimeline,
 } from '../lib/missionUtils'
+import {
+  STORAGE_KEYS,
+  loadFromStorage,
+  saveToStorage,
+  clearAllDemoStorage,
+} from '../lib/storage'
 
 export interface TransportContextType {
+  // Profils & Rôles
   owner: Owner
   driver: Driver
+  activeRole: 'truck_owner' | 'driver'
+  setActiveRole: (role: 'truck_owner' | 'driver') => void
+  updateOwnerProfile: (updatedData: Partial<Owner>) => void
+  updateDriverProfile: (updatedData: Partial<Driver>) => void
+
+  // Données métier
   trucks: Truck[]
   opportunities: Opportunity[]
   trips: Trip[]
@@ -32,8 +47,25 @@ export interface TransportContextType {
   missions: Mission[]
   driverStatus: 'available' | 'unavailable'
   interestedOpportunityIds: string[]
+
+  // Notifications
+  notifications: AppNotification[]
+  unreadNotificationsCount: number
+  markNotificationAsRead: (id: string) => void
+  markAllNotificationsAsRead: () => void
+  clearNotifications: () => void
+  addNotification: (
+    notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
+  ) => AppNotification
+
+  // Actions Chauffeur
   toggleDriverStatus: () => void
   setDriverStatus: (status: 'available' | 'unavailable') => void
+  submitApplication: (opportunityId: string, notes?: string) => Application
+  recordInterest: (opportunityId: string) => boolean
+  isInterested: (opportunityId: string) => boolean
+
+  // Actions Propriétaire
   addTruck: (newTruckData: {
     matricule: string
     category: Truck['category']
@@ -53,39 +85,168 @@ export interface TransportContextType {
     description: string
     isReturnTrip?: boolean
   }) => Opportunity
-  submitApplication: (opportunityId: string, notes?: string) => Application
-  recordInterest: (opportunityId: string) => boolean
-  isInterested: (opportunityId: string) => boolean
   acceptApplication: (
     applicationId: string,
     truckId?: string
   ) => { application: Application; mission: Mission } | null
   rejectApplication: (applicationId: string, reason?: string) => boolean
+
+  // Cycle Mission
   confirmMission: (missionId: string) => boolean
   startMission: (missionId: string) => boolean
   completeMission: (missionId: string) => boolean
   cancelMission: (missionId: string, reason?: string) => boolean
+
+  // Requêtes
   getMissionById: (missionId: string) => Mission | undefined
   getApplicationById: (applicationId: string) => Application | undefined
+
+  // Réinitialisation globale de la démo
+  resetDemoData: () => void
 }
 
 const TransportContext = createContext<TransportContextType | undefined>(undefined)
 
 export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [owner] = useState<Owner>(MOCK_OWNER)
-  const [driver, setDriver] = useState<Driver>(MOCK_DRIVER)
-  const [trucks, setTrucks] = useState<Truck[]>(MOCK_TRUCKS)
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(MOCK_OPPORTUNITIES)
-  const [trips] = useState<Trip[]>(MOCK_TRIPS)
-  const [applications, setApplications] = useState<Application[]>(MOCK_APPLICATIONS)
-  const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
-  const [driverStatus, setDriverStatusState] = useState<'available' | 'unavailable'>('available')
+  // Chargement initial depuis le localStorage avec fallback gracieux sur les mocks
+  const [owner, setOwner] = useState<Owner>(() =>
+    loadFromStorage<Owner>(STORAGE_KEYS.OWNER, MOCK_OWNER)
+  )
 
-  // Initialiser les opportunités déjà manifestées depuis MOCK_APPLICATIONS
+  const [driver, setDriver] = useState<Driver>(() =>
+    loadFromStorage<Driver>(STORAGE_KEYS.DRIVER, MOCK_DRIVER)
+  )
+
+  const [activeRole, setActiveRoleState] = useState<'truck_owner' | 'driver'>(() =>
+    loadFromStorage<'truck_owner' | 'driver'>(STORAGE_KEYS.ACTIVE_ROLE, 'truck_owner')
+  )
+
+  const [trucks, setTrucks] = useState<Truck[]>(() =>
+    loadFromStorage<Truck[]>(STORAGE_KEYS.TRUCKS, MOCK_TRUCKS)
+  )
+
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(() =>
+    loadFromStorage<Opportunity[]>(STORAGE_KEYS.OPPORTUNITIES, MOCK_OPPORTUNITIES)
+  )
+
+  const [trips] = useState<Trip[]>(MOCK_TRIPS)
+
+  const [applications, setApplications] = useState<Application[]>(() =>
+    loadFromStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, MOCK_APPLICATIONS)
+  )
+
+  const [missions, setMissions] = useState<Mission[]>(() =>
+    loadFromStorage<Mission[]>(STORAGE_KEYS.MISSIONS, MOCK_MISSIONS)
+  )
+
+  const [driverStatus, setDriverStatusState] = useState<'available' | 'unavailable'>(() =>
+    loadFromStorage<'available' | 'unavailable'>(STORAGE_KEYS.DRIVER_STATUS, 'available')
+  )
+
   const [interestedOpportunityIds, setInterestedOpportunityIds] = useState<string[]>(() => {
-    return Array.from(new Set(MOCK_APPLICATIONS.map((a) => a.opportunityId)))
+    const defaultIds = Array.from(new Set(MOCK_APPLICATIONS.map((a) => a.opportunityId)))
+    return loadFromStorage<string[]>(STORAGE_KEYS.INTERESTED_IDS, defaultIds)
   })
 
+  const [notifications, setNotifications] = useState<AppNotification[]>(() =>
+    loadFromStorage<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, MOCK_NOTIFICATIONS)
+  )
+
+  // Persistance automatique dans le localStorage
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.OWNER, owner)
+  }, [owner])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.DRIVER, driver)
+  }, [driver])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ACTIVE_ROLE, activeRole)
+  }, [activeRole])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.TRUCKS, trucks)
+  }, [trucks])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.OPPORTUNITIES, opportunities)
+  }, [opportunities])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.APPLICATIONS, applications)
+  }, [applications])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.MISSIONS, missions)
+  }, [missions])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.DRIVER_STATUS, driverStatus)
+  }, [driverStatus])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.INTERESTED_IDS, interestedOpportunityIds)
+  }, [interestedOpportunityIds])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications)
+  }, [notifications])
+
+  // Rôle actif
+  const setActiveRole = (role: 'truck_owner' | 'driver') => {
+    setActiveRoleState(role)
+  }
+
+  // Mises à jour des profils avec persistance
+  const updateOwnerProfile = (updatedData: Partial<Owner>) => {
+    setOwner((prev) => ({
+      ...prev,
+      ...updatedData,
+    }))
+  }
+
+  const updateDriverProfile = (updatedData: Partial<Driver>) => {
+    setDriver((prev) => ({
+      ...prev,
+      ...updatedData,
+    }))
+  }
+
+  // Gestion des notifications
+  const addNotification = useCallback(
+    (notifData: Omit<AppNotification, 'id' | 'createdAt' | 'read'>): AppNotification => {
+      const newNotif: AppNotification = {
+        ...notifData,
+        id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        createdAt: 'À l’instant',
+        read: false,
+      }
+      setNotifications((prev) => [newNotif, ...prev])
+      return newNotif
+    },
+    []
+  )
+
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    )
+  }, [])
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }, [])
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([])
+  }, [])
+
+  const unreadNotificationsCount = useMemo(() => {
+    return notifications.filter((n) => !n.read).length
+  }, [notifications])
+
+  // Chauffeur Disponibilité
   const toggleDriverStatus = () => {
     setDriverStatusState((prev) => {
       const nextStatus = prev === 'available' ? 'unavailable' : 'available'
@@ -99,6 +260,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setDriver((d) => ({ ...d, status }))
   }
 
+  // Propriétaire Ajout Camion
   const addTruck = (newTruckData: {
     matricule: string
     category: Truck['category']
@@ -126,8 +288,18 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     setTrucks((prev) => [newTruck, ...prev])
+    setOwner((prev) => ({ ...prev, truckCount: prev.truckCount + 1 }))
+
+    addNotification({
+      type: 'system',
+      title: 'Nouveau camion ajouté',
+      message: `Le véhicule ${cleanMatricule} (${newTruckData.categoryLabel}) a été ajouté à votre flotte.`,
+      targetRole: 'truck_owner',
+      link: '/proprietaire',
+    })
   }
 
+  // Propriétaire Publication Opportunité
   const publishOpportunity = (newOppData: {
     origin: string
     destination: string
@@ -169,12 +341,21 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     setOpportunities((prev) => [newOpp, ...prev])
+
+    // Notification système / chauffeur
+    addNotification({
+      type: 'opportunity',
+      title: 'Nouvelle opportunité publiée',
+      message: `Une opportunité de fret (${newOppData.origin} → ${newOppData.destination}, ${newOppData.weightTons}T) est disponible.`,
+      relatedId: newOpp.id,
+      link: `/opportunites/${newOpp.id}`,
+      targetRole: 'driver',
+    })
+
     return newOpp
   }
 
-  /**
-   * Soumission d'une candidature / manifestation d'intérêt par le chauffeur
-   */
+  // Chauffeur Candidature / Intérêt
   const submitApplication = (opportunityId: string, notes?: string): Application => {
     const existing = applications.find(
       (a) => a.opportunityId === opportunityId && a.driverId === driver.id
@@ -213,6 +394,16 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       prev.includes(opportunityId) ? prev : [...prev, opportunityId]
     )
 
+    // Notification pour le Propriétaire
+    addNotification({
+      type: 'application',
+      title: 'Nouvelle manifestation d’intérêt',
+      message: `${driver.fullName} a manifesté son intérêt pour votre opportunité : ${newApp.origin} → ${newApp.destination}.`,
+      relatedId: newApp.id,
+      link: '/proprietaire',
+      targetRole: 'truck_owner',
+    })
+
     return newApp
   }
 
@@ -228,10 +419,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     )
   }
 
-  /**
-   * Acceptation d'une candidature par le propriétaire
-   * Crée automatiquement une mission correspondante et adapte le statut de l'opportunité
-   */
+  // Propriétaire Acceptation de candidature -> Création Mission
   const acceptApplication = (
     applicationId: string,
     truckId?: string
@@ -289,7 +477,6 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       isDemo: true,
     }
 
-    // Mettre à jour la candidature
     const updatedApplication: Application = {
       ...app,
       status: 'accepted',
@@ -300,23 +487,32 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       prev.map((a) => (a.id === applicationId ? updatedApplication : a))
     )
 
-    // Ajouter la mission
     setMissions((prev) => [newMission, ...prev])
 
-    // Adapter le statut de l'opportunité
     if (opp) {
       setOpportunities((prev) =>
         prev.map((o) => (o.id === opp.id ? { ...o, status: 'in_progress' } : o))
       )
     }
 
+    // Notification côté Chauffeur
+    addNotification({
+      type: 'mission',
+      title: 'Candidature acceptée ! Mission créée',
+      message: `Votre candidature pour ${app.origin} → ${app.destination} a été acceptée. La mission ${newMission.missionCode} est créée.`,
+      relatedId: newMission.id,
+      link: `/missions/${newMission.id}`,
+      targetRole: 'driver',
+    })
+
     return { application: updatedApplication, mission: newMission }
   }
 
-  /**
-   * Refus d'une candidature par le propriétaire
-   */
+  // Propriétaire Refus Candidature
   const rejectApplication = (applicationId: string, reason?: string): boolean => {
+    const app = applications.find((a) => a.id === applicationId)
+    if (!app) return false
+
     setApplications((prev) =>
       prev.map((a) => {
         if (a.id === applicationId) {
@@ -329,13 +525,25 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return a
       })
     )
+
+    // Notification côté Chauffeur
+    addNotification({
+      type: 'application',
+      title: 'Candidature non retenue',
+      message: `Votre candidature pour le trajet ${app.origin} → ${app.destination} n’a pas été retenue par le transporteur.`,
+      relatedId: app.id,
+      link: '/chauffeur',
+      targetRole: 'driver',
+    })
+
     return true
   }
 
-  /**
-   * Confirmation de la mission par le propriétaire
-   */
+  // Propriétaire Confirmation Mission
   const confirmMission = (missionId: string): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
@@ -354,7 +562,6 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
-    // Synchroniser la candidature associée si présente
     setApplications((prev) =>
       prev.map((a) => {
         if (a.missionId === missionId) {
@@ -364,13 +571,24 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
+    // Notification de confirmation
+    addNotification({
+      type: 'mission',
+      title: 'Mission confirmée pour départ',
+      message: `La mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) est confirmée. Le départ peut être enclenché.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
     return true
   }
 
-  /**
-   * Démarrage de la mission par le chauffeur
-   */
+  // Chauffeur Démarrage Mission
   const startMission = (missionId: string): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
@@ -390,13 +608,25 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return m
       })
     )
+
+    // Notification démarrage
+    addNotification({
+      type: 'mission',
+      title: 'Mission en cours de route',
+      message: `Le camion ${targetMission.truckMatricule} a démarré la mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}).`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
     return true
   }
 
-  /**
-   * Clôture / Fin de la mission par le chauffeur
-   */
+  // Chauffeur Clôture Mission
   const completeMission = (missionId: string): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
@@ -418,7 +648,6 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
-    // Mettre à jour l'opportunité et la candidature correspondantes
     setApplications((prev) =>
       prev.map((a) => {
         if (a.missionId === missionId) {
@@ -428,13 +657,24 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
+    // Notification de complétion
+    addNotification({
+      type: 'mission',
+      title: 'Mission clôturée avec succès',
+      message: `La mission ${targetMission.missionCode} est arrivée à destination (${targetMission.destination}) et a été clôturée.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
     return true
   }
 
-  /**
-   * Annulation de la mission
-   */
+  // Annulation Mission
   const cancelMission = (missionId: string, reason?: string): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
@@ -460,6 +700,15 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
+    addNotification({
+      type: 'mission',
+      title: 'Mission annulée',
+      message: `La mission ${targetMission.missionCode} a été annulée.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
     return true
   }
 
@@ -471,11 +720,30 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return applications.find((a) => a.id === applicationId)
   }
 
+  // Réinitialisation de la démonstration : efface le storage et restaure l'état par défaut
+  const resetDemoData = () => {
+    clearAllDemoStorage()
+    setOwner(MOCK_OWNER)
+    setDriver(MOCK_DRIVER)
+    setActiveRoleState('truck_owner')
+    setTrucks(MOCK_TRUCKS)
+    setOpportunities(MOCK_OPPORTUNITIES)
+    setApplications(MOCK_APPLICATIONS)
+    setMissions(MOCK_MISSIONS)
+    setDriverStatusState('available')
+    setInterestedOpportunityIds(Array.from(new Set(MOCK_APPLICATIONS.map((a) => a.opportunityId))))
+    setNotifications(MOCK_NOTIFICATIONS)
+  }
+
   return (
     <TransportContext.Provider
       value={{
         owner,
         driver,
+        activeRole,
+        setActiveRole,
+        updateOwnerProfile,
+        updateDriverProfile,
         trucks,
         opportunities,
         trips,
@@ -483,6 +751,12 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         missions,
         driverStatus,
         interestedOpportunityIds,
+        notifications,
+        unreadNotificationsCount,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        clearNotifications,
+        addNotification,
         toggleDriverStatus,
         setDriverStatus,
         addTruck,
@@ -498,6 +772,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         cancelMission,
         getMissionById,
         getApplicationById,
+        resetDemoData,
       }}
     >
       {children}

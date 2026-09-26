@@ -9,6 +9,8 @@ import { OpportunitiesPage } from './pages/OpportunitiesPage'
 import { OpportunityDetailsPage } from './pages/OpportunityDetailsPage'
 import { MissionsPage } from './pages/MissionsPage'
 import { MissionDetailsPage } from './pages/MissionDetailsPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { NotificationsPage } from './pages/NotificationsPage'
 
 export const App: React.FC = () => {
   return (
@@ -44,6 +46,12 @@ export const App: React.FC = () => {
 
           {/* Détails et cycle de mission */}
           <Route path="/missions/:id" element={<MissionDetailsPage />} />
+
+          {/* Profil utilisateur démonstratif */}
+          <Route path="/profil" element={<ProfilePage />} />
+
+          {/* Centre de notifications */}
+          <Route path="/notifications" element={<NotificationsPage />} />
 
           {/* Redirection fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

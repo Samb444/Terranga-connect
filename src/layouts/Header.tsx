@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Truck, Menu, X, ArrowRight, Compass, Route } from 'lucide-react'
+import { Truck, Menu, X, ArrowRight, Compass, Route, Bell, User } from 'lucide-react'
 import { APP_CONFIG, NAV_LINKS } from '../data/constants'
 import { Button } from '../components/ui/Button'
+import { NotificationBell } from '../components/notifications/NotificationBell'
+import { UserMenu } from '../components/user/UserMenu'
 
 interface HeaderProps {
   onOpenJoinModal: () => void
@@ -111,6 +113,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
 
         {/* Action Header Desktop */}
         <div className="hidden md:flex items-center gap-3">
+          <NotificationBell />
+          <UserMenu />
           <Button
             variant="primary"
             size="md"
@@ -122,17 +126,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
           </Button>
         </div>
 
-        {/* Bouton Hamburger Mobile */}
+        {/* Bouton Hamburger & Actions Mobile */}
         <div className="flex md:hidden items-center gap-2">
+          <NotificationBell />
+          <UserMenu />
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
+            className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
             aria-label={isMobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-navigation"
           >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
@@ -175,6 +181,30 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
               <div className="flex items-center gap-2">
                 <Route className="w-4 h-4" />
                 <span>Missions en cours & à venir</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              to="/profil"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between px-4 py-3 text-base font-semibold text-slate-200 hover:text-amber-400 bg-slate-900/80 rounded-lg border border-slate-800"
+            >
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-amber-400" />
+                <span>Mon Profil Démonstratif</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              to="/notifications"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between px-4 py-3 text-base font-semibold text-slate-200 hover:text-amber-400 bg-slate-900/80 rounded-lg border border-slate-800"
+            >
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-emerald-400" />
+                <span>Centre de Notifications</span>
               </div>
               <ArrowRight className="w-4 h-4" />
             </Link>

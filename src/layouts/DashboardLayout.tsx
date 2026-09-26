@@ -17,6 +17,8 @@ import {
 import { APP_CONFIG } from '../data/constants'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../lib/utils'
+import { NotificationBell } from '../components/notifications/NotificationBell'
+import { UserMenu } from '../components/user/UserMenu'
 
 export interface NavItemConfig {
   id: string
@@ -86,7 +88,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </Badge>
 
             <Badge variant="outline" className="hidden lg:inline-flex text-[10px] text-slate-400 py-0.5 px-2">
-              Démonstration Phase 4
+              Démonstration Phase 5
             </Badge>
           </div>
 
@@ -96,8 +98,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="hidden sm:flex items-center gap-2">{headerActions}</div>
             )}
 
+            {/* Notification Bell & User Menu */}
+            <NotificationBell />
+            <UserMenu />
+
             {/* Bascule rapide entre espaces + lien Missions */}
-            <div className="hidden md:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs">
+            <div className="hidden xl:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs">
               <Link
                 to="/proprietaire"
                 className={cn(
@@ -107,7 +113,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     : 'text-slate-400 hover:text-white'
                 )}
               >
-                Espace Propriétaire
+                Propriétaire
               </Link>
               <Link
                 to="/chauffeur"
@@ -118,7 +124,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     : 'text-slate-400 hover:text-white'
                 )}
               >
-                Espace Chauffeur
+                Chauffeur
               </Link>
               <Link
                 to="/missions"
@@ -259,13 +265,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Sidebar Desktop */}
         <aside className="hidden lg:flex flex-col w-64 shrink-0 space-y-6">
           <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 shadow-xl">
-            <div className="flex items-center gap-3 pb-4 mb-3 border-b border-slate-800">
-              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400">
+            <Link
+              to="/profil"
+              className="flex items-center gap-3 pb-4 mb-3 border-b border-slate-800 hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-colors group"
+              title="Voir mon profil démonstratif"
+            >
+              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
                 {isOwner ? <Boxes className="w-5 h-5" /> : <User className="w-5 h-5" />}
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
-                  Espace actif
+              <div className="overflow-hidden flex-1">
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider group-hover:text-amber-400 transition-colors">
+                  Profil Démo
                 </p>
                 <p className="text-sm font-bold text-white truncate">
                   {isOwner ? 'Mamadou Diop' : 'Ibrahima Ndiaye'}
@@ -274,7 +284,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   {isOwner ? 'Transports Teranga' : 'Chauffeur Poids Lourd'}
                 </p>
               </div>
-            </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
+            </Link>
 
             <nav className="space-y-1" aria-label="Navigation latérale">
               {navItems.map((item) => {

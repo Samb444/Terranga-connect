@@ -54,6 +54,7 @@ export interface Driver {
   preferredCorridors: string[]
   tripsCompleted: number
   isDemo: boolean
+  memberSince?: string
 }
 
 /**
@@ -68,6 +69,7 @@ export interface Owner {
   truckCount: number
   activeMissionsCount: number
   isDemo: boolean
+  memberSince?: string
 }
 
 /**
@@ -231,4 +233,29 @@ export interface SystemHealth {
   environment: 'development' | 'production'
   checkedAt: string
 }
+
+/**
+ * Types de notifications applicatives
+ */
+export type NotificationType = 'application' | 'mission' | 'opportunity' | 'system'
+
+/**
+ * Structure d'une notification du centre de notifications
+ */
+export interface AppNotification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+  relatedId?: string
+  link?: string
+  targetRole?: 'truck_owner' | 'driver' | 'all'
+}
+
+/**
+ * Alias de compatibilité
+ */
+export type Notification = AppNotification
 

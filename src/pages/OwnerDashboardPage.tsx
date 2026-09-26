@@ -17,6 +17,7 @@ import {
   ClipboardList,
   CheckCircle2,
   CheckCheck,
+  Bell,
 } from 'lucide-react'
 import { DashboardLayout, type NavItemConfig } from '../layouts/DashboardLayout'
 import { StatCard } from '../components/dashboard/StatCard'
@@ -40,6 +41,7 @@ export const OwnerDashboardPage: React.FC = () => {
     opportunities,
     applications,
     missions,
+    unreadNotificationsCount,
     acceptApplication,
     rejectApplication,
   } = useTransport()
@@ -91,7 +93,14 @@ export const OwnerDashboardPage: React.FC = () => {
       icon: <Compass className="w-4 h-4" />,
       route: '/opportunites',
     },
-    { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" /> },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: <Bell className="w-4 h-4" />,
+      badge: unreadNotificationsCount > 0 ? String(unreadNotificationsCount) : undefined,
+      route: '/notifications',
+    },
+    { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" />, route: '/profil' },
   ]
 
   // Opportunités de retour pour réduire les trajets à vide
@@ -163,7 +172,7 @@ export const OwnerDashboardPage: React.FC = () => {
                 <span>Espace Transporteur & Flotte</span>
               </Badge>
               <Badge variant="outline" className="text-[11px] text-slate-400 py-0.5 px-2">
-                Données de démonstration Phase 4
+                Données de démonstration Phase 5
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
