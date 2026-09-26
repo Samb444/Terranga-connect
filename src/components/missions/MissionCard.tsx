@@ -16,6 +16,8 @@ import {
 import type { Mission } from '../../types'
 import {
   MISSION_STATUS_CONFIG,
+  OPERATIONAL_STATUS_CONFIG,
+  getMissionTracking,
   formatFcfa,
   getAvailableMissionAction,
   type MissionTransitionAction,
@@ -34,6 +36,8 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, onAction }) =
     MISSION_STATUS_CONFIG[mission.status] || MISSION_STATUS_CONFIG.pending
   const isReturn = mission.tripType === 'return_cargo'
   const actionInfo = getAvailableMissionAction(mission.status)
+  const tracking = getMissionTracking(mission)
+  const opStatusCfg = OPERATIONAL_STATUS_CONFIG[tracking.currentStatus]
 
   const cardTitle =
     mission.title || `Transport de fret ${mission.cargo} (${mission.origin} → ${mission.destination})`
@@ -55,6 +59,16 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, onAction }) =
               <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
               <span>{statusCfg.label}</span>
             </Badge>
+
+            {mission.status === 'in_progress' && (
+              <Badge
+                variant="outline"
+                className={`text-[10px] py-0.5 px-2 flex items-center gap-1 font-semibold ${opStatusCfg.badgeClass}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${opStatusCfg.dotColor}`} />
+                <span>{opStatusCfg.shortLabel}</span>
+              </Badge>
+            )}
 
             {isReturn && (
               <Badge variant="success" className="text-[10px] py-0.5 px-2">

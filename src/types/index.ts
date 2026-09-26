@@ -141,6 +141,61 @@ export interface MissionTimelineStep {
 }
 
 /**
+ * Identifiant des étapes du suivi opérationnel - Phase 7
+ */
+export type OperationalStepId = 'pickup' | 'in_transit' | 'arrival' | 'delivery'
+
+/**
+ * Statut du suivi opérationnel d'une mission
+ */
+export type OperationalStatus =
+  | 'not_started' // Suivi non actif (mission en attente ou acceptée non démarrée)
+  | 'pending_pickup' // Mission démarrée, en attente de prise en charge
+  | 'picked_up' // Prise en charge confirmée au départ
+  | 'in_transit' // En route sur le corridor
+  | 'arrived' // Arrivé au point de livraison
+  | 'delivered' // Livraison confirmée et émargée
+
+/**
+ * Événement d'historique de suivi opérationnel
+ */
+export interface OperationalEvent {
+  id: string
+  step: OperationalStepId | 'created' | 'accepted' | 'started' | 'cancelled'
+  label: string
+  location?: string
+  timestamp: string
+  authorName?: string
+  authorRole?: 'driver' | 'truck_owner' | 'system'
+  notes?: string
+}
+
+/**
+ * Attestation et confirmation de livraison
+ */
+export interface DeliveryConfirmation {
+  confirmedAt: string
+  confirmedBy: string
+  signerName: string
+  signerRole: string
+  notes?: string
+  receiptCode: string
+}
+
+/**
+ * Modèle de suivi opérationnel complet pour une mission
+ */
+export interface MissionTracking {
+  currentStatus: OperationalStatus
+  pickedUpAt?: string
+  inTransitAt?: string
+  arrivedAt?: string
+  deliveredAt?: string
+  history: OperationalEvent[]
+  deliveryConfirmation?: DeliveryConfirmation
+}
+
+/**
  * Structure complète d'une mission de transport
  */
 export interface Mission {
@@ -177,6 +232,10 @@ export interface Mission {
   startedAt?: string
   completedAt?: string
   cancelledAt?: string
+  pickedUpAt?: string
+  arrivedAt?: string
+  deliveredAt?: string
+  tracking?: MissionTracking
   timeline: MissionTimelineStep[]
   notes?: string
   isDemo: boolean

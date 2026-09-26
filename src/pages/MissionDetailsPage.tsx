@@ -13,15 +13,21 @@ import {
   Coins,
   FileText,
   Phone,
+  PackageCheck,
+  Truck,
+  Navigation,
 } from 'lucide-react'
 import { useTransport } from '../hooks/useTransport'
 import { Header } from '../layouts/Header'
 import { Footer } from '../layouts/Footer'
 import { MissionTimeline } from '../components/missions/MissionTimeline'
+import { MissionOperationalTracking } from '../components/missions/MissionOperationalTracking'
 import {
   MissionActionModal,
   type MissionActionType,
 } from '../components/modals/MissionActionModal'
+import { OperationalActionModal } from '../components/modals/OperationalActionModal'
+import { DeliveryConfirmationModal } from '../components/modals/DeliveryConfirmationModal'
 import { DiscoveryModal } from '../components/modals/DiscoveryModal'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -29,7 +35,9 @@ import { Card } from '../components/ui/Card'
 import {
   MISSION_STATUS_CONFIG,
   calculateMissionEconomics,
+  getNextOperationalAction,
 } from '../lib/missionUtils'
+import type { OperationalStepId } from '../types'
 
 export const MissionDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -40,12 +48,22 @@ export const MissionDetailsPage: React.FC = () => {
     startMission,
     completeMission,
     cancelMission,
+    confirmPickup,
+    startTransit,
+    signalArrival,
+    confirmDelivery,
   } = useTransport()
 
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false)
   const [modalAction, setModalAction] = useState<MissionActionType>('start')
   const [isActionModalOpen, setIsActionModalOpen] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
+
+  // Modals opérationnels Phase 7
+  const [isOperationalModalOpen, setIsOperationalModalOpen] = useState(false)
+  const [operationalStepToConfirm, setOperationalStepToConfirm] =
+    useState<OperationalStepId>('pickup')
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false)
 
   const mission = id ? getMissionById(id) : undefined
 
@@ -77,7 +95,9 @@ export const MissionDetailsPage: React.FC = () => {
     mission.estimatedAmountFcfa || mission.estimatedPrice,
     isReturn
   )
+  const nextOperationalAction = getNextOperationalAction(mission)
 
+  // Gestion des actions du cycle général Phase 6
   const handleOpenActionModal = (actionType: MissionActionType) => {
     setModalAction(actionType)
     setIsActionModalOpen(true)
@@ -100,6 +120,48 @@ export const MissionDetailsPage: React.FC = () => {
       cancelMission(missionId)
       setFeedbackMessage('Mission annulée dans la démonstration.')
     }
+  }
+
+  // Déclencheur des étapes de suivi opérationnel Phase 7
+  const handleTriggerOperationalStep = (stepId: OperationalStepId) => {
+    if (stepId === 'delivery') {
+      setIsDeliveryModalOpen(true)
+    } else {
+      setOperationalStepToConfirm(stepId)
+      setIsOperationalModalOpen(true)
+    }
+  }
+
+  const handleConfirmOperationalAction = (
+    missionId: string,
+    stepId: OperationalStepId,
+    details?: { location?: string; notes?: string }
+  ) => {
+    if (stepId === 'pickup') {
+      confirmPickup(missionId, details)
+      setFeedbackMessage('Prise en charge validée ! La marchandise est sécurisée à bord.')
+    } else if (stepId === 'in_transit') {
+      startTransit(missionId, details)
+      setFeedbackMessage('Départ confirmé ! Le camion est en route sur le corridor routier.')
+    } else if (stepId === 'arrival') {
+      signalArrival(missionId, details)
+      setFeedbackMessage('Arrivée à destination signalée ! Le véhicule est stationné pour déchargement.')
+    }
+  }
+
+  const handleConfirmDeliveryAction = (
+    missionId: string,
+    confirmation: {
+      signerName: string
+      signerRole: string
+      notes?: string
+      receiptCode: string
+    }
+  ) => {
+    confirmDelivery(missionId, confirmation)
+    setFeedbackMessage(
+      `Livraison confirmée et émargée avec succès par ${confirmation.signerName} (Réf : ${confirmation.receiptCode}) !`
+    )
   }
 
   return (
@@ -167,7 +229,7 @@ export const MissionDetailsPage: React.FC = () => {
               </div>
 
               <Badge variant="outline" className="text-xs text-slate-400 py-1 px-3">
-                Démonstration Phase 6
+                Démonstration Phase 7
               </Badge>
             </div>
 
@@ -238,11 +300,17 @@ export const MissionDetailsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bloc central : Timeline & Actions de simulation du cycle */}
+        {/* --- SECTION DÉDIÉE : SUIVI OPÉRATIONNEL & GESTION DE LA LIVRAISON (PHASE 7 - Exigence Section 6) --- */}
+        <MissionOperationalTracking
+          mission={mission}
+          onTriggerOperationalStep={handleTriggerOperationalStep}
+        />
+
+        {/* Bloc central : Timeline générale Phase 6 & Fiche d'acteurs */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Colonne gauche (2 colonnes) : Timeline & Détails cargaison */}
+          {/* Colonne gauche (2 colonnes) : Timeline générale & Acteurs */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Timeline visuelle interactive */}
+            {/* Timeline générale du cycle de vie (Phase 6) */}
             <MissionTimeline timeline={mission.timeline} status={mission.status} />
 
             {/* Fiche détaillée acteurs et conditions */}
@@ -250,7 +318,7 @@ export const MissionDetailsPage: React.FC = () => {
               <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
                 <FileText className="w-4 h-4 text-amber-400" />
                 <h3 className="text-base font-bold text-white">
-                  Acteurs & Informations opérationnelles
+                  Acteurs & Informations contractuelles
                 </h3>
               </div>
 
@@ -322,7 +390,7 @@ export const MissionDetailsPage: React.FC = () => {
 
           {/* Colonne droite (1 colonne) : Actions de simulation & Modèle économique */}
           <div className="space-y-6">
-            {/* Panneau d'actions de simulation (Exigence 10) */}
+            {/* Panneau d'actions de simulation (Console d'action synchronisée) */}
             <Card className="bg-slate-900/90 border-slate-800 p-6 space-y-5">
               <div className="space-y-1.5 pb-3 border-b border-slate-800">
                 <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider block">
@@ -371,21 +439,55 @@ export const MissionDetailsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Action : Terminer la mission (si in_progress) */}
-                {mission.status === 'in_progress' && (
-                  <div className="space-y-2">
-                    <span className="text-[10px] text-slate-400 uppercase font-medium block">
-                      Action disponible :
-                    </span>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => handleOpenActionModal('complete')}
-                      className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30 text-xs font-bold"
-                    >
-                      <CheckCheck className="w-4 h-4 mr-1.5" />
-                      <span>Terminer la mission</span>
-                    </Button>
+                {/* Actions opérationnelles directes quand la mission est en cours (Phase 7) */}
+                {mission.status === 'in_progress' && nextOperationalAction && (
+                  <div className="space-y-2.5">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-medium block">
+                        Action opérationnelle suivante :
+                      </span>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => handleTriggerOperationalStep(nextOperationalAction.stepId)}
+                        className={`w-full justify-center text-xs font-bold ${
+                          nextOperationalAction.stepId === 'delivery'
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40'
+                            : nextOperationalAction.stepId === 'arrival'
+                            ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/40'
+                            : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950/40'
+                        }`}
+                      >
+                        {nextOperationalAction.stepId === 'pickup' && (
+                          <PackageCheck className="w-4 h-4 mr-1.5" />
+                        )}
+                        {nextOperationalAction.stepId === 'in_transit' && (
+                          <Truck className="w-4 h-4 mr-1.5" />
+                        )}
+                        {nextOperationalAction.stepId === 'arrival' && (
+                          <Navigation className="w-4 h-4 mr-1.5" />
+                        )}
+                        {nextOperationalAction.stepId === 'delivery' && (
+                          <CheckCheck className="w-4 h-4 mr-1.5" />
+                        )}
+                        <span>{nextOperationalAction.actionLabel}</span>
+                      </Button>
+                    </div>
+
+                    {/* Raccourci vers émargement si camion arrivé */}
+                    {nextOperationalAction.stepId !== 'delivery' && (
+                      <div className="pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenActionModal('complete')}
+                          className="w-full justify-center text-xs text-slate-400 hover:text-white"
+                        >
+                          <CheckCheck className="w-3.5 h-3.5 mr-1" />
+                          <span>Clôturer directement la mission</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -393,9 +495,9 @@ export const MissionDetailsPage: React.FC = () => {
                 {mission.status === 'completed' && (
                   <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 text-center space-y-1">
                     <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto" />
-                    <p className="font-bold">Mission terminée</p>
+                    <p className="font-bold">Mission terminée & livrée</p>
                     <p className="text-[11px] text-emerald-300/80">
-                      Le cycle complet a été clôturé et validé avec succès.
+                      Le cycle opérationnel et contradictoire a été clôturé avec succès.
                     </p>
                   </div>
                 )}
@@ -428,7 +530,7 @@ export const MissionDetailsPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Modèle économique & Décomposition financière (Exigence 14) */}
+            {/* Modèle économique & Décomposition financière */}
             <Card className="bg-slate-900/90 border-slate-800 p-6 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
                 <Coins className="w-4 h-4 text-amber-400" />
@@ -465,13 +567,13 @@ export const MissionDetailsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Mention obligatoire Exigence 14 */}
+              {/* Mention obligatoire */}
               <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
                 <span className="font-semibold text-slate-300 block">
                   Hypothèses de démonstration :
                 </span>
                 <p className="leading-relaxed">
-                  Modèle économique envisagé : 30 % sur trajet aller, 40 % sur retour optimisé,
+                  Modèle économique indicatif : 30 % sur trajet aller, 40 % sur retour optimisé,
                   abonnement matériel 30 000 FCFA/mois. Aucun paiement réel n’est déclenché.
                 </p>
               </div>
@@ -482,12 +584,31 @@ export const MissionDetailsPage: React.FC = () => {
 
       <Footer />
       <DiscoveryModal isOpen={isDiscoveryOpen} onClose={() => setIsDiscoveryOpen(false)} />
+
+      {/* Modal d'actions Phase 6 (Acceptation, Démarrage, Annulation) */}
       <MissionActionModal
         isOpen={isActionModalOpen}
         onClose={() => setIsActionModalOpen(false)}
         mission={mission}
         actionType={modalAction}
         onConfirmAction={handleConfirmAction}
+      />
+
+      {/* Modal d'action opérationnelle Phase 7 (Prise en charge, Départ, Arrivée) */}
+      <OperationalActionModal
+        isOpen={isOperationalModalOpen}
+        onClose={() => setIsOperationalModalOpen(false)}
+        mission={mission}
+        stepId={operationalStepToConfirm}
+        onConfirm={handleConfirmOperationalAction}
+      />
+
+      {/* Modal d'émargement et confirmation de livraison (Exigence Section 9) */}
+      <DeliveryConfirmationModal
+        isOpen={isDeliveryModalOpen}
+        onClose={() => setIsDeliveryModalOpen(false)}
+        mission={mission}
+        onConfirmDelivery={handleConfirmDeliveryAction}
       />
     </div>
   )

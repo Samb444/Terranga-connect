@@ -22,7 +22,12 @@ import {
 import {
   calculateMissionEconomics,
   buildMissionTimeline,
+  getMissionTracking,
+  canPerformOperationalStep,
+  formatCurrentDateTimeFr,
+  generateDeliveryReceiptCode,
 } from '../lib/missionUtils'
+import type { DeliveryConfirmation, OperationalEvent } from '../types'
 import {
   STORAGE_KEYS,
   loadFromStorage,
@@ -97,6 +102,20 @@ export interface TransportContextType {
   startMission: (missionId: string) => boolean
   completeMission: (missionId: string) => boolean
   cancelMission: (missionId: string, reason?: string) => boolean
+
+  // Suivi opérationnel & Livraison - Phase 7
+  confirmPickup: (missionId: string, details?: { location?: string; notes?: string }) => boolean
+  startTransit: (missionId: string, details?: { notes?: string }) => boolean
+  signalArrival: (missionId: string, details?: { location?: string; notes?: string }) => boolean
+  confirmDelivery: (
+    missionId: string,
+    confirmation: {
+      signerName: string
+      signerRole: string
+      notes?: string
+      receiptCode?: string
+    }
+  ) => boolean
 
   // Requêtes
   getMissionById: (missionId: string) => Mission | undefined
@@ -643,14 +662,29 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return false
     }
 
-    const nowStr = 'À l’instant (En route)'
+    const nowStr = formatCurrentDateTimeFr()
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const startEvt: OperationalEvent = {
+            id: `evt-start-${Date.now()}`,
+            step: 'started',
+            label: 'Mission démarrée',
+            timestamp: nowStr,
+            location: m.origin,
+            authorName: driver.fullName,
+            authorRole: 'driver',
+          }
           return {
             ...m,
             status: 'in_progress',
             startedAt: nowStr,
+            tracking: {
+              ...currentTracking,
+              currentStatus: 'pending_pickup',
+              history: [...currentTracking.history, startEvt],
+            },
             timeline: buildMissionTimeline('in_progress', {
               createdAt: m.createdAt,
               acceptedAt: m.acceptedAt || m.createdAt,
@@ -682,20 +716,49 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return false
     }
 
-    const nowStr = 'À l’instant (Livré)'
+    const nowStr = formatCurrentDateTimeFr()
+    const receiptCode = generateDeliveryReceiptCode(targetMission.missionCode)
+    const deliveryDoc: DeliveryConfirmation = {
+      confirmedAt: nowStr,
+      confirmedBy: activeRole === 'driver' ? driver.fullName : owner.fullName,
+      signerName: 'Réceptionnaire sur site',
+      signerRole: 'Responsable Déchargement',
+      receiptCode,
+      notes: 'Clôture de mission et déchargement validés.',
+    }
+
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const newEvt: OperationalEvent = {
+            id: `evt-delivery-${Date.now()}`,
+            step: 'delivery',
+            label: 'Livraison confirmée',
+            timestamp: nowStr,
+            location: m.destination,
+            authorName: targetMission.driverName,
+            authorRole: 'system',
+            notes: `Livraison enregistrée sous la référence ${receiptCode}.`,
+          }
           return {
             ...m,
             status: 'completed',
             completedAt: nowStr,
+            deliveredAt: nowStr,
             timeline: buildMissionTimeline('completed', {
               createdAt: m.createdAt,
               acceptedAt: m.acceptedAt || m.createdAt,
               startedAt: m.startedAt || m.createdAt,
               completedAt: nowStr,
             }),
+            tracking: {
+              ...currentTracking,
+              currentStatus: 'delivered',
+              deliveredAt: nowStr,
+              deliveryConfirmation: currentTracking.deliveryConfirmation || deliveryDoc,
+              history: [...currentTracking.history, newEvt],
+            },
           }
         }
         return m
@@ -733,10 +796,21 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return false
     }
 
-    const nowStr = 'À l’instant (Annulée)'
+    const nowStr = formatCurrentDateTimeFr()
     setMissions((prev) =>
       prev.map((m) => {
         if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const cancelEvt: OperationalEvent = {
+            id: `evt-cancel-${Date.now()}`,
+            step: 'cancelled',
+            label: 'Mission annulée',
+            timestamp: nowStr,
+            location: m.origin,
+            authorName: activeRole === 'driver' ? driver.fullName : owner.fullName,
+            authorRole: activeRole,
+            notes: reason || 'Mission annulée dans la démonstration.',
+          }
           return {
             ...m,
             status: 'cancelled',
@@ -747,6 +821,10 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               acceptedAt: m.acceptedAt,
               startedAt: m.startedAt,
             }),
+            tracking: {
+              ...currentTracking,
+              history: [...currentTracking.history, cancelEvt],
+            },
           }
         }
         return m
@@ -768,6 +846,252 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       type: 'mission',
       title: 'Mission annulée',
       message: `La mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) a été annulée.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
+    return true
+  }
+
+  // --- SUIVI OPÉRATIONNEL & GESTION DE LA LIVRAISON (PHASE 7) ---
+
+  // 1. Confirmer la prise en charge (Chargement sur site)
+  const confirmPickup = (missionId: string, details?: { location?: string; notes?: string }): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+    const guard = canPerformOperationalStep(targetMission, 'pickup')
+    if (!guard.allowed) return false
+
+    const nowStr = formatCurrentDateTimeFr()
+    const location = details?.location || targetMission.origin
+    const authorName = activeRole === 'driver' ? driver.fullName : `${owner.fullName} (Superviseur)`
+
+    setMissions((prev) =>
+      prev.map((m) => {
+        if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const newEvt: OperationalEvent = {
+            id: `evt-pickup-${Date.now()}`,
+            step: 'pickup',
+            label: 'Prise en charge confirmée',
+            timestamp: nowStr,
+            location,
+            authorName,
+            authorRole: activeRole,
+            notes: details?.notes || 'Marchandise prise en charge et sécurisée à bord.',
+          }
+          return {
+            ...m,
+            pickedUpAt: nowStr,
+            tracking: {
+              ...currentTracking,
+              currentStatus: 'picked_up',
+              pickedUpAt: nowStr,
+              history: [...currentTracking.history, newEvt],
+            },
+          }
+        }
+        return m
+      })
+    )
+
+    addNotification({
+      type: 'mission',
+      title: 'Prise en charge confirmée',
+      message: `La marchandise de la mission ${targetMission.missionCode} a été chargée à ${location} par ${targetMission.driverName}.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
+    return true
+  }
+
+  // 2. Prendre la route (Mise en route sur le corridor)
+  const startTransit = (missionId: string, details?: { notes?: string }): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+    const guard = canPerformOperationalStep(targetMission, 'in_transit')
+    if (!guard.allowed) return false
+
+    const nowStr = formatCurrentDateTimeFr()
+    const location = `Corridor ${targetMission.origin} → ${targetMission.destination}`
+    const authorName = activeRole === 'driver' ? driver.fullName : `${owner.fullName} (Superviseur)`
+
+    setMissions((prev) =>
+      prev.map((m) => {
+        if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const newEvt: OperationalEvent = {
+            id: `evt-transit-${Date.now()}`,
+            step: 'in_transit',
+            label: 'Mission en route',
+            timestamp: nowStr,
+            location,
+            authorName,
+            authorRole: activeRole,
+            notes: details?.notes || 'Départ validé. Véhicule en acheminement sur corridor routier.',
+          }
+          return {
+            ...m,
+            tracking: {
+              ...currentTracking,
+              currentStatus: 'in_transit',
+              inTransitAt: nowStr,
+              history: [...currentTracking.history, newEvt],
+            },
+          }
+        }
+        return m
+      })
+    )
+
+    addNotification({
+      type: 'mission',
+      title: 'Mission en route',
+      message: `Le camion ${targetMission.truckMatricule} a pris la route vers ${targetMission.destination}. Acheminement en cours.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
+    return true
+  }
+
+  // 3. Signaler l'arrivée à destination
+  const signalArrival = (missionId: string, details?: { location?: string; notes?: string }): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+    const guard = canPerformOperationalStep(targetMission, 'arrival')
+    if (!guard.allowed) return false
+
+    const nowStr = formatCurrentDateTimeFr()
+    const location = details?.location || targetMission.destination
+    const authorName = activeRole === 'driver' ? driver.fullName : `${owner.fullName} (Superviseur)`
+
+    setMissions((prev) =>
+      prev.map((m) => {
+        if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const newEvt: OperationalEvent = {
+            id: `evt-arrival-${Date.now()}`,
+            step: 'arrival',
+            label: 'Arrivé à destination',
+            timestamp: nowStr,
+            location,
+            authorName,
+            authorRole: activeRole,
+            notes: details?.notes || 'Camion stationné au point de livraison. Prêt pour déchargement.',
+          }
+          return {
+            ...m,
+            arrivedAt: nowStr,
+            tracking: {
+              ...currentTracking,
+              currentStatus: 'arrived',
+              arrivedAt: nowStr,
+              history: [...currentTracking.history, newEvt],
+            },
+          }
+        }
+        return m
+      })
+    )
+
+    addNotification({
+      type: 'mission',
+      title: 'Arrivée signalée',
+      message: `Le camion ${targetMission.truckMatricule} est arrivé à destination (${location}). Prêt pour déchargement.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'all',
+    })
+
+    return true
+  }
+
+  // 4. Confirmer la livraison avec émargement (Exigence Section 9)
+  const confirmDelivery = (
+    missionId: string,
+    confirmation: {
+      signerName: string
+      signerRole: string
+      notes?: string
+      receiptCode?: string
+    }
+  ): boolean => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return false
+    const guard = canPerformOperationalStep(targetMission, 'delivery')
+    if (!guard.allowed) return false
+
+    const nowStr = formatCurrentDateTimeFr()
+    const receiptCode =
+      confirmation.receiptCode || generateDeliveryReceiptCode(targetMission.missionCode)
+
+    const deliveryDoc: DeliveryConfirmation = {
+      confirmedAt: nowStr,
+      confirmedBy: activeRole === 'driver' ? driver.fullName : owner.fullName,
+      signerName: confirmation.signerName,
+      signerRole: confirmation.signerRole,
+      receiptCode,
+      notes: confirmation.notes || 'Cargaison réceptionnée et déchargée sans réserve.',
+    }
+
+    setMissions((prev) =>
+      prev.map((m) => {
+        if (m.id === missionId) {
+          const currentTracking = getMissionTracking(m)
+          const newEvt: OperationalEvent = {
+            id: `evt-delivery-${Date.now()}`,
+            step: 'delivery',
+            label: 'Livraison confirmée',
+            timestamp: nowStr,
+            location: m.destination,
+            authorName: confirmation.signerName,
+            authorRole: 'system',
+            notes: `Émargement enregistré sous la référence ${receiptCode}.`,
+          }
+          return {
+            ...m,
+            status: 'completed',
+            completedAt: nowStr,
+            deliveredAt: nowStr,
+            timeline: buildMissionTimeline('completed', {
+              createdAt: m.createdAt,
+              acceptedAt: m.acceptedAt || m.createdAt,
+              startedAt: m.startedAt || m.createdAt,
+              completedAt: nowStr,
+            }),
+            tracking: {
+              ...currentTracking,
+              currentStatus: 'delivered',
+              deliveredAt: nowStr,
+              deliveryConfirmation: deliveryDoc,
+              history: [...currentTracking.history, newEvt],
+            },
+          }
+        }
+        return m
+      })
+    )
+
+    if (targetMission.applicationId) {
+      setApplications((prev) =>
+        prev.map((a) => {
+          if (a.missionId === missionId) {
+            return { ...a, status: 'completed' }
+          }
+          return a
+        })
+      )
+    }
+
+    addNotification({
+      type: 'mission',
+      title: 'Livraison confirmée',
+      message: `La livraison de la mission ${targetMission.missionCode} (${targetMission.origin} → ${targetMission.destination}) a été confirmée et émargée par ${confirmation.signerName} (Réf: ${receiptCode}).`,
       relatedId: targetMission.id,
       link: `/missions/${targetMission.id}`,
       targetRole: 'all',
@@ -835,6 +1159,10 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         startMission,
         completeMission,
         cancelMission,
+        confirmPickup,
+        startTransit,
+        signalArrival,
+        confirmDelivery,
         getMissionById,
         getApplicationById,
         resetDemoData,
