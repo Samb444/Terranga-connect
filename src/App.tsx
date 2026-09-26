@@ -7,6 +7,8 @@ import { OwnerDashboardPage } from './pages/OwnerDashboardPage'
 import { DriverDashboardPage } from './pages/DriverDashboardPage'
 import { OpportunitiesPage } from './pages/OpportunitiesPage'
 import { OpportunityDetailsPage } from './pages/OpportunityDetailsPage'
+import { MissionsPage } from './pages/MissionsPage'
+import { MissionDetailsPage } from './pages/MissionDetailsPage'
 
 export const App: React.FC = () => {
   return (
@@ -36,6 +38,12 @@ export const App: React.FC = () => {
 
           {/* Détails d'une opportunité spécifique */}
           <Route path="/opportunites/:id" element={<OpportunityDetailsPage />} />
+
+          {/* Liste et suivi des missions */}
+          <Route path="/missions" element={<MissionsPage />} />
+
+          {/* Détails et cycle de mission */}
+          <Route path="/missions/:id" element={<MissionDetailsPage />} />
 
           {/* Redirection fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

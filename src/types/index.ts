@@ -76,6 +76,106 @@ export interface Owner {
 export type OpportunityStatus = 'available' | 'in_progress' | 'completed'
 
 /**
+ * Statut d'une candidature de chauffeur
+ */
+export type ApplicationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'confirmed'
+  | 'rejected'
+  | 'completed'
+  | 'cancelled'
+
+/**
+ * Statut d'une mission de transport
+ */
+export type MissionStatus =
+  | 'interest'
+  | 'pending'
+  | 'accepted'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+
+/**
+ * Type d'itinéraire
+ */
+export type TripType = 'one_way' | 'round_trip' | 'return_cargo'
+
+/**
+ * Candidature d'un chauffeur sur une opportunité
+ */
+export interface Application {
+  id: string
+  opportunityId: string
+  opportunityTitle: string
+  origin: string
+  destination: string
+  cargo: string
+  truckType: string
+  departureDate: string
+  driverId: string
+  driverName: string
+  driverPhone: string
+  driverExperience: string
+  proposedTruck: string
+  appliedAt: string
+  status: ApplicationStatus
+  notes?: string
+  missionId?: string
+  isDemo: boolean
+}
+
+/**
+ * Étape dans la chronologie de la mission
+ */
+export interface MissionTimelineStep {
+  id: string
+  label: string
+  description: string
+  timestamp?: string
+  status: 'completed' | 'current' | 'upcoming'
+}
+
+/**
+ * Structure complète d'une mission de transport
+ */
+export interface Mission {
+  id: string
+  missionCode: string
+  opportunityId: string
+  applicationId?: string
+  ownerId: string
+  ownerName: string
+  driverId: string
+  driverName: string
+  driverPhone?: string
+  truckId: string
+  truckMatricule: string
+  truckType: string
+  origin: string
+  destination: string
+  departureDate: string
+  returnDate?: string
+  cargo: string
+  tripType: TripType
+  estimatedDistance: number
+  estimatedPrice: string
+  estimatedAmountFcfa: number
+  commissionRate: number // ex: 0.30 pour 30%, 0.40 pour retour
+  commissionAmountFcfa: number
+  commissionLabel: string
+  status: MissionStatus
+  createdAt: string
+  startedAt?: string
+  completedAt?: string
+  timeline: MissionTimelineStep[]
+  notes?: string
+  isDemo: boolean
+}
+
+/**
  * Structure représentative d'une opportunité de transport
  */
 export interface Opportunity {
@@ -131,3 +231,4 @@ export interface SystemHealth {
   environment: 'development' | 'production'
   checkedAt: string
 }
+

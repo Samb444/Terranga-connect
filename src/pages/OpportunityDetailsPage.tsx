@@ -27,7 +27,7 @@ import { DiscoveryModal } from '../components/modals/DiscoveryModal'
 
 export const OpportunityDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
-  const { opportunities, recordInterest, isInterested } = useTransport()
+  const { opportunities, submitApplication, isInterested } = useTransport()
 
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false)
@@ -37,7 +37,7 @@ export const OpportunityDetailsPage: React.FC = () => {
 
   const handleManifestInterest = () => {
     if (opportunity) {
-      recordInterest(opportunity.id)
+      submitApplication(opportunity.id)
       setShowConfirmation(true)
     }
   }
@@ -78,25 +78,31 @@ export const OpportunityDetailsPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Bannière de confirmation frontend mot pour mot selon spec */}
+            {/* Bannière de confirmation frontend Phase 4 */}
             {(showConfirmation || hasExpressedInterest) && (
               <div className="p-4 sm:p-5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <strong className="block text-white text-sm sm:text-base font-bold">
-                      Votre intérêt a été enregistré dans cette démonstration.
+                      Votre candidature a bien été enregistrée.
                     </strong>
                     <p className="text-xs text-emerald-300/80 mt-0.5">
-                      Cette action est purement illustrative pour ce prototype frontend : aucun
-                      contact réel ni transaction financière n'est engagé.
+                      Elle est désormais visible dans votre espace chauffeur sous « Mes candidatures » et soumise à validation du propriétaire.
                     </p>
                   </div>
                 </div>
 
-                <Badge variant="success" className="text-xs py-1 px-3 shrink-0">
-                  Simulation validée
-                </Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link to="/chauffeur">
+                    <Button variant="secondary" size="sm" className="text-xs">
+                      Voir mes candidatures
+                    </Button>
+                  </Link>
+                  <Badge variant="success" className="text-xs py-1 px-3">
+                    Candidature active
+                  </Badge>
+                </div>
               </div>
             )}
 

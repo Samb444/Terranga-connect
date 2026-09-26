@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Truck, Menu, X, ArrowRight, Compass } from 'lucide-react'
+import { Truck, Menu, X, ArrowRight, Compass, Route } from 'lucide-react'
 import { APP_CONFIG, NAV_LINKS } from '../data/constants'
 import { Button } from '../components/ui/Button'
 
@@ -98,6 +98,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
             <Compass className="w-3.5 h-3.5" />
             <span>Opportunités</span>
           </Link>
+
+          {/* Lien direct Missions */}
+          <Link
+            to="/missions"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 rounded-lg transition-colors ml-1"
+          >
+            <Route className="w-3.5 h-3.5" />
+            <span>Missions</span>
+          </Link>
         </nav>
 
         {/* Action Header Desktop */}
@@ -140,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
                 key={link.label}
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link.href)}
-                className="px-4 py-3 text-base font-medium text-slate-200 hover:text-amber-400 hover:bg-slate-900/80 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="px-4 py-3 text-base font-medium text-slate-200 hover:text-amber-400 hover:bg-slate-900/80 rounded-lg transition-colors focus:outline-none focus-ring-2 focus:ring-amber-500"
               >
                 {link.label}
               </a>
@@ -154,6 +163,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenJoinModal }) => {
               <div className="flex items-center gap-2">
                 <Compass className="w-4 h-4" />
                 <span>Opportunités de transport</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              to="/missions"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between px-4 py-3 text-base font-semibold text-emerald-300 bg-emerald-500/10 rounded-lg border border-emerald-500/20"
+            >
+              <div className="flex items-center gap-2">
+                <Route className="w-4 h-4" />
+                <span>Missions en cours & à venir</span>
               </div>
               <ArrowRight className="w-4 h-4" />
             </Link>

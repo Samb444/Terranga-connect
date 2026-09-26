@@ -86,7 +86,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </Badge>
 
             <Badge variant="outline" className="hidden lg:inline-flex text-[10px] text-slate-400 py-0.5 px-2">
-              Démonstration Phase 3
+              Démonstration Phase 4
             </Badge>
           </div>
 
@@ -96,7 +96,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="hidden sm:flex items-center gap-2">{headerActions}</div>
             )}
 
-            {/* Bascule rapide entre espaces */}
+            {/* Bascule rapide entre espaces + lien Missions */}
             <div className="hidden md:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs">
               <Link
                 to="/proprietaire"
@@ -119,6 +119,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 )}
               >
                 Espace Chauffeur
+              </Link>
+              <Link
+                to="/missions"
+                className="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-amber-300 transition-colors flex items-center gap-1"
+              >
+                <Route className="w-3 h-3 text-amber-400" />
+                <span>Missions</span>
               </Link>
             </div>
 
