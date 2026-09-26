@@ -5,7 +5,9 @@ import { HomePage } from './pages/HomePage'
 export const App: React.FC = () => {
   return (
     <MainLayout>
-      <HomePage />
+      {({ openDiscoveryModal }) => (
+        <HomePage onOpenDiscovery={openDiscoveryModal} />
+      )}
     </MainLayout>
   )
 }

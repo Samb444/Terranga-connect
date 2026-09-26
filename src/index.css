@@ -12,9 +12,13 @@
   --color-teranga-green: #10b981;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
 }
@@ -23,4 +27,21 @@ body {
   font-family: var(--font-sans);
   background-color: #070d1e;
   color: #f1f5f9;
+  overflow-x: hidden;
+}
+
+/* Accessibilité & respect des préférences de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
