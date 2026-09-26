@@ -29,6 +29,7 @@ export const NotificationsPage: React.FC = () => {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     clearNotifications,
+    activeRole,
   } = useTransport()
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'read' | NotificationType>(
@@ -59,7 +60,7 @@ export const NotificationsPage: React.FC = () => {
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Retour aux missions</span>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
                 <Bell className="w-6 h-6 text-amber-400" />
                 <span>Centre de Notifications</span>
@@ -69,6 +70,12 @@ export const NotificationsPage: React.FC = () => {
                   {unreadNotificationsCount} non lue{unreadNotificationsCount > 1 ? 's' : ''}
                 </Badge>
               )}
+              <Badge
+                variant="outline"
+                className="text-xs text-slate-300 border-slate-700 bg-slate-900/80 font-medium"
+              >
+                Rôle : {activeRole === 'truck_owner' ? 'Propriétaire' : 'Chauffeur'}
+              </Badge>
             </div>
           </div>
 

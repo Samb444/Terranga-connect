@@ -296,9 +296,11 @@ export function getAvailableMissionAction(status: MissionStatus): {
         canCancel: true,
       }
     case 'in_progress':
+      // En cours : aucune action de terminaison directe autorisée.
+      // Le suivi opérationnel sur /missions/:id est la seule voie de livraison.
       return {
-        primaryAction: 'complete',
-        primaryLabel: 'Terminer la mission',
+        primaryAction: null,
+        primaryLabel: null,
         canCancel: true,
       }
     case 'completed':

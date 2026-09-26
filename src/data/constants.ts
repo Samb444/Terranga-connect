@@ -5,9 +5,9 @@ export const APP_CONFIG = {
   tagline: 'Connecter les camions aux opportunités',
   description:
     'Teranga Connect facilite la mise en relation entre propriétaires de camions et chauffeurs afin d’optimiser les trajets et de réduire les retours à vide.',
-  statusNotice: 'Projet en cours de développement',
-  phase: 'Phase 3 — Parcours utilisateurs et première interface produit',
-  version: '3.0.0-phase3',
+  statusNotice: 'Prototype frontend démonstratif & simulation métier',
+  phase: 'Phase 8 — Finalisation & Durcissement du prototype',
+  version: '8.0.0-phase8',
 } as const
 
 export const SYSTEM_HEALTH_DEFAULT: SystemHealth = {

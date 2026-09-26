@@ -290,22 +290,37 @@ export const MissionOperationalTracking: React.FC<MissionOperationalTrackingProp
               </p>
             </div>
 
-            <Button
-              variant="primary"
-              size="md"
-              disabled={!nextGuard.allowed}
-              onClick={() => onTriggerOperationalStep(nextAction.stepId)}
-              className={`shrink-0 text-xs font-extrabold px-5 py-2.5 shadow-lg cursor-pointer ${
-                nextAction.stepId === 'delivery'
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
-                  : nextAction.stepId === 'arrival'
-                  ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/50'
-                  : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950/40'
-              }`}
-            >
-              {stepIcons[nextAction.stepId]}
-              <span className="ml-1.5">{nextAction.actionLabel}</span>
-            </Button>
+            {activeRole === 'driver' ? (
+              <Button
+                variant="primary"
+                size="md"
+                disabled={!nextGuard.allowed}
+                onClick={() => onTriggerOperationalStep(nextAction.stepId)}
+                className={`shrink-0 text-xs font-extrabold px-5 py-2.5 shadow-lg cursor-pointer ${
+                  nextAction.stepId === 'delivery'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
+                    : nextAction.stepId === 'arrival'
+                    ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/50'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950/40'
+                }`}
+              >
+                {stepIcons[nextAction.stepId]}
+                <span className="ml-1.5">{nextAction.actionLabel}</span>
+              </Button>
+            ) : (
+              <div className="flex flex-col sm:items-end gap-1.5 shrink-0">
+                <Badge variant="outline" className="text-[11px] text-amber-400 border-amber-500/30 bg-amber-500/10 py-1 px-2.5">
+                  Action réservée au Chauffeur
+                </Badge>
+                <button
+                  type="button"
+                  onClick={handleToggleRole}
+                  className="text-[11px] text-slate-400 hover:text-amber-300 underline transition-colors cursor-pointer"
+                >
+                  Basculer en vue Chauffeur pour tester
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Règle de garde explicite */}

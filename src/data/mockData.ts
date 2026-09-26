@@ -928,7 +928,7 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
     type: 'system',
     title: 'Session de démonstration active',
     message:
-      'Bienvenue sur Teranga Connect Phase 5. Toutes vos modifications sont conservées localement dans votre navigateur.',
+      'Bienvenue sur Teranga Connect (Phase 8 — Finalisation & Durcissement). Vos actions sont conservées localement dans votre navigateur.',
     read: true,
     createdAt: '2026-09-26',
     link: '/profil',

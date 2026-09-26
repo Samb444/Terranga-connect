@@ -16,6 +16,7 @@ import {
   PackageCheck,
   Truck,
   Navigation,
+  Clock,
 } from 'lucide-react'
 import { useTransport } from '../hooks/useTransport'
 import { Header } from '../layouts/Header'
@@ -52,6 +53,7 @@ export const MissionDetailsPage: React.FC = () => {
     startTransit,
     signalArrival,
     confirmDelivery,
+    activeRole,
   } = useTransport()
 
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false)
@@ -409,15 +411,22 @@ export const MissionDetailsPage: React.FC = () => {
                     <span className="text-[10px] text-slate-400 uppercase font-medium block">
                       Action disponible :
                     </span>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => handleOpenActionModal('accept')}
-                      className="w-full justify-center bg-blue-600 hover:bg-blue-500 text-white shadow-blue-950/30 text-xs font-bold"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                      <span>Accepter la mission</span>
-                    </Button>
+                    {activeRole === 'truck_owner' ? (
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => handleOpenActionModal('accept')}
+                        className="w-full justify-center bg-blue-600 hover:bg-blue-500 text-white shadow-blue-950/30 text-xs font-bold"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                        <span>Accepter la mission</span>
+                      </Button>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 text-center">
+                        <Clock className="w-4 h-4 text-amber-400 mx-auto mb-1" />
+                        <span>En attente de validation par le propriétaire du camion.</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -427,67 +436,68 @@ export const MissionDetailsPage: React.FC = () => {
                     <span className="text-[10px] text-slate-400 uppercase font-medium block">
                       Action disponible :
                     </span>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => handleOpenActionModal('start')}
-                      className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30 text-xs font-bold"
-                    >
-                      <Play className="w-4 h-4 mr-1.5 fill-current" />
-                      <span>Démarrer la mission</span>
-                    </Button>
+                    {activeRole === 'driver' ? (
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => handleOpenActionModal('start')}
+                        className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30 text-xs font-bold"
+                      >
+                        <Play className="w-4 h-4 mr-1.5 fill-current" />
+                        <span>Démarrer la mission</span>
+                      </Button>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 text-center">
+                        <Truck className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+                        <span>Mission acceptée. Prête pour le départ par le chauffeur ({mission.driverName}).</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Actions opérationnelles directes quand la mission est en cours (Phase 7) */}
+                {/* Actions opérationnelles directes quand la mission est en cours (Phase 7 & 8) */}
                 {mission.status === 'in_progress' && nextOperationalAction && (
                   <div className="space-y-2.5">
                     <div className="space-y-1">
                       <span className="text-[10px] text-slate-400 uppercase font-medium block">
                         Action opérationnelle suivante :
                       </span>
-                      <Button
-                        variant="primary"
-                        size="md"
-                        onClick={() => handleTriggerOperationalStep(nextOperationalAction.stepId)}
-                        className={`w-full justify-center text-xs font-bold ${
-                          nextOperationalAction.stepId === 'delivery'
-                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40'
-                            : nextOperationalAction.stepId === 'arrival'
-                            ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/40'
-                            : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950/40'
-                        }`}
-                      >
-                        {nextOperationalAction.stepId === 'pickup' && (
-                          <PackageCheck className="w-4 h-4 mr-1.5" />
-                        )}
-                        {nextOperationalAction.stepId === 'in_transit' && (
-                          <Truck className="w-4 h-4 mr-1.5" />
-                        )}
-                        {nextOperationalAction.stepId === 'arrival' && (
-                          <Navigation className="w-4 h-4 mr-1.5" />
-                        )}
-                        {nextOperationalAction.stepId === 'delivery' && (
-                          <CheckCheck className="w-4 h-4 mr-1.5" />
-                        )}
-                        <span>{nextOperationalAction.actionLabel}</span>
-                      </Button>
-                    </div>
-
-                    {/* Raccourci vers émargement si camion arrivé */}
-                    {nextOperationalAction.stepId !== 'delivery' && (
-                      <div className="pt-1">
+                      {activeRole === 'driver' ? (
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenActionModal('complete')}
-                          className="w-full justify-center text-xs text-slate-400 hover:text-white"
+                          variant="primary"
+                          size="md"
+                          onClick={() => handleTriggerOperationalStep(nextOperationalAction.stepId)}
+                          className={`w-full justify-center text-xs font-bold ${
+                            nextOperationalAction.stepId === 'delivery'
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40'
+                              : nextOperationalAction.stepId === 'arrival'
+                              ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/40'
+                              : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950/40'
+                          }`}
                         >
-                          <CheckCheck className="w-3.5 h-3.5 mr-1" />
-                          <span>Clôturer directement la mission</span>
+                          {nextOperationalAction.stepId === 'pickup' && (
+                            <PackageCheck className="w-4 h-4 mr-1.5" />
+                          )}
+                          {nextOperationalAction.stepId === 'in_transit' && (
+                            <Truck className="w-4 h-4 mr-1.5" />
+                          )}
+                          {nextOperationalAction.stepId === 'arrival' && (
+                            <Navigation className="w-4 h-4 mr-1.5" />
+                          )}
+                          {nextOperationalAction.stepId === 'delivery' && (
+                            <CheckCheck className="w-4 h-4 mr-1.5" />
+                          )}
+                          <span>{nextOperationalAction.actionLabel}</span>
                         </Button>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 text-center space-y-1">
+                          <span className="text-amber-400 font-semibold block text-[11px]">
+                            {nextOperationalAction.actionLabel}
+                          </span>
+                          <span>Action réservée au chauffeur assigné ({mission.driverName}).</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -513,8 +523,8 @@ export const MissionDetailsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bouton d'annulation (si pas déjà terminée ou annulée) */}
-                {mission.status !== 'completed' && mission.status !== 'cancelled' && (
+                {/* Bouton d'annulation (réservé au propriétaire / gestion de mission) */}
+                {activeRole === 'truck_owner' && mission.status !== 'completed' && mission.status !== 'cancelled' && (
                   <div className="pt-2">
                     <Button
                       variant="ghost"

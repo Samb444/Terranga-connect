@@ -10,8 +10,8 @@ import {
   ChevronRight,
   CheckCircle2,
   Play,
-  CheckCheck,
   Building2,
+  Navigation,
 } from 'lucide-react'
 import type { Mission } from '../../types'
 import {
@@ -212,8 +212,19 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, onAction }) =
         </span>
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Action principale selon statut */}
-          {actionInfo.primaryAction && onAction ? (
+          {/* Si in_progress : redirection obligatoire vers le suivi opérationnel */}
+          {mission.status === 'in_progress' ? (
+            <Link to={`/missions/${mission.id}`}>
+              <Button
+                variant="primary"
+                size="sm"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-950/30"
+              >
+                <Navigation className="w-3.5 h-3.5 mr-1" />
+                <span>Voir le suivi</span>
+              </Button>
+            </Link>
+          ) : actionInfo.primaryAction && onAction ? (
             <Button
               variant="primary"
               size="sm"
@@ -221,14 +232,11 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, onAction }) =
               className={`text-xs font-bold ${
                 actionInfo.primaryAction === 'accept'
                   ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : actionInfo.primaryAction === 'start'
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/30'
               }`}
             >
               {actionInfo.primaryAction === 'accept' && <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
               {actionInfo.primaryAction === 'start' && <Play className="w-3.5 h-3.5 mr-1 fill-current" />}
-              {actionInfo.primaryAction === 'complete' && <CheckCheck className="w-3.5 h-3.5 mr-1" />}
               <span>{actionInfo.primaryLabel}</span>
             </Button>
           ) : mission.status === 'completed' ? (

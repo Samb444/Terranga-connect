@@ -248,6 +248,17 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     []
   )
 
+  // Gestion des notifications (Phase 8 — Filtrage strict selon le rôle actif)
+  const roleNotifications = useMemo(() => {
+    return notifications.filter(
+      (n) => !n.targetRole || n.targetRole === 'all' || n.targetRole === activeRole
+    )
+  }, [notifications, activeRole])
+
+  const unreadNotificationsCount = useMemo(() => {
+    return roleNotifications.filter((n) => !n.read).length
+  }, [roleNotifications])
+
   const markNotificationAsRead = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -255,16 +266,23 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [])
 
   const markAllNotificationsAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  }, [])
+    setNotifications((prev) =>
+      prev.map((n) =>
+        !n.targetRole || n.targetRole === 'all' || n.targetRole === activeRole
+          ? { ...n, read: true }
+          : n
+      )
+    )
+  }, [activeRole])
 
   const clearNotifications = useCallback(() => {
-    setNotifications([])
-  }, [])
-
-  const unreadNotificationsCount = useMemo(() => {
-    return notifications.filter((n) => !n.read).length
-  }, [notifications])
+    // Efface uniquement les notifications du rôle actif, préservant celles de l'autre rôle
+    setNotifications((prev) =>
+      prev.filter(
+        (n) => n.targetRole && n.targetRole !== 'all' && n.targetRole !== activeRole
+      )
+    )
+  }, [activeRole])
 
   // Chauffeur Disponibilité
   const toggleDriverStatus = () => {
@@ -711,8 +729,16 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Clôture Mission (passage de IN_PROGRESS à COMPLETED)
   const completeMission = (missionId: string): boolean => {
     const targetMission = missions.find((m) => m.id === missionId)
-    // Règle senior : transition autorisée uniquement depuis IN_PROGRESS
+    // Règle senior Phase 8 : transition autorisée uniquement depuis IN_PROGRESS et statut opérationnel DELIVERED
     if (!targetMission || targetMission.status !== 'in_progress') {
+      return false
+    }
+
+    const currentTracking = getMissionTracking(targetMission)
+    if (currentTracking.currentStatus !== 'delivered') {
+      console.warn(
+        `[TransportContext] Transition rejetée : la mission ${targetMission.missionCode} doit franchir l’étape opérationnelle de livraison (delivered) avant complétion.`
+      )
       return false
     }
 
@@ -1139,7 +1165,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         missions,
         driverStatus,
         interestedOpportunityIds,
-        notifications,
+        notifications: roleNotifications,
         unreadNotificationsCount,
         markNotificationAsRead,
         markAllNotificationsAsRead,
