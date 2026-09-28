@@ -10,6 +10,8 @@ import {
   RotateCcw,
   Route,
   CheckCircle2,
+  CreditCard,
+  ArrowRight,
 } from 'lucide-react'
 import { useTransport } from '../hooks/useTransport'
 import { ProfileHeader } from '../components/profile/ProfileHeader'
@@ -25,7 +27,7 @@ import { DiscoveryModal } from '../components/modals/DiscoveryModal'
 import type { UserRole } from '../types'
 
 export const ProfilePage: React.FC = () => {
-  const { owner, driver, shipper, activeRole, setActiveRole } = useTransport()
+  const { owner, driver, shipper, activeRole, setActiveRole, userSubscription } = useTransport()
   const [selectedRole, setSelectedRole] = useState<UserRole>(activeRole)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
@@ -245,6 +247,82 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Section Abonnement 30 000 FCFA / mois (Cahier des charges Élément 1) */}
+        <div className="bg-gradient-to-br from-slate-900 to-blue-950/30 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Abonnement Matériel & Flotte — 30 000 FCFA / mois
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Formule obligatoire pour l'accès aux frets garantis et aux avances carburant
+                </p>
+              </div>
+            </div>
+
+            <Link to="/abonnement">
+              <Button variant="primary" size="sm" className="text-xs">
+                <span>Gérer l’abonnement</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <span className="text-slate-400 block">Statut abonnement :</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                    userSubscription?.status === 'active'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : userSubscription?.status === 'expired'
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}
+                >
+                  {userSubscription?.status === 'active'
+                    ? 'Actif'
+                    : userSubscription?.status === 'expired'
+                    ? 'Expiré'
+                    : userSubscription?.status === 'pending'
+                    ? 'En attente'
+                    : 'Non souscrit'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <span className="text-slate-400 block">Tarif mensuel :</span>
+              <span className="text-sm font-bold text-white">
+                {userSubscription ? `${userSubscription.amount.toLocaleString('fr-FR')} FCFA` : '30 000 FCFA'} / mois
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <span className="text-slate-400 block">Période & Échéance :</span>
+              <span className="text-xs font-semibold text-amber-300">
+                {userSubscription?.expiresAt ? `Expire le ${userSubscription.expiresAt}` : 'Souscription requise'}
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <span className="text-slate-400 block">État du paiement :</span>
+              <span className="text-xs font-medium text-slate-300">
+                {userSubscription?.paymentStatus === 'paid'
+                  ? `Soldé (${userSubscription.paymentProvider})`
+                  : userSubscription?.paymentStatus === 'pending'
+                  ? 'En attente de règlement'
+                  : 'Aucun paiement enregistré'}
+              </span>
+            </div>
           </div>
         </div>
 

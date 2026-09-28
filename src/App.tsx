@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { TransportProvider } from './context/TransportContext'
 import { MainLayout } from './layouts/MainLayout'
 
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
+
 // Chargement dynamique des pages (Code-Splitting)
 const HomePage = lazy(() =>
   import('./pages/HomePage').then((m) => ({ default: m.HomePage }))
@@ -36,6 +38,9 @@ const ShipperDashboardPage = lazy(() =>
 )
 const AdminSupervisionPage = lazy(() =>
   import('./pages/AdminSupervisionPage').then((m) => ({ default: m.AdminSupervisionPage }))
+)
+const SubscriptionPage = lazy(() =>
+  import('./pages/SubscriptionPage').then((m) => ({ default: m.SubscriptionPage }))
 )
 
 // Fallback de chargement cohérent avec le thème sombre Teranga Connect
@@ -72,11 +77,25 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* Espace Propriétaire de camion */}
-            <Route path="/proprietaire" element={<OwnerDashboardPage />} />
+            {/* Espace Propriétaire de camion (Protégé) */}
+            <Route
+              path="/proprietaire"
+              element={
+                <ProtectedRoute requiredRoles={['truck_owner', 'admin']}>
+                  <OwnerDashboardPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Espace Chauffeur */}
-            <Route path="/chauffeur" element={<DriverDashboardPage />} />
+            {/* Espace Chauffeur (Protégé) */}
+            <Route
+              path="/chauffeur"
+              element={
+                <ProtectedRoute requiredRoles={['driver', 'admin']}>
+                  <DriverDashboardPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Catalogue des opportunités */}
             <Route path="/opportunites" element={<OpportunitiesPage />} />
@@ -84,11 +103,25 @@ export const App: React.FC = () => {
             {/* Détails d'une opportunité spécifique */}
             <Route path="/opportunites/:id" element={<OpportunityDetailsPage />} />
 
-            {/* Liste et suivi des missions */}
-            <Route path="/missions" element={<MissionsPage />} />
+            {/* Liste et suivi des missions (Protégé) */}
+            <Route
+              path="/missions"
+              element={
+                <ProtectedRoute requiredRoles={['truck_owner', 'driver', 'shipper', 'admin']}>
+                  <MissionsPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Détails et cycle de mission */}
-            <Route path="/missions/:id" element={<MissionDetailsPage />} />
+            {/* Détails et cycle de mission (Protégé) */}
+            <Route
+              path="/missions/:id"
+              element={
+                <ProtectedRoute requiredRoles={['truck_owner', 'driver', 'shipper', 'admin']}>
+                  <MissionDetailsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Profil utilisateur démonstratif */}
             <Route path="/profil" element={<ProfilePage />} />
@@ -96,11 +129,35 @@ export const App: React.FC = () => {
             {/* Centre de notifications */}
             <Route path="/notifications" element={<NotificationsPage />} />
 
-            {/* Espace Chargeur & Donneur d'ordre */}
-            <Route path="/chargeur" element={<ShipperDashboardPage />} />
+            {/* Espace Chargeur & Donneur d'ordre (Protégé) */}
+            <Route
+              path="/chargeur"
+              element={
+                <ProtectedRoute requiredRoles={['shipper', 'admin']}>
+                  <ShipperDashboardPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Console de Supervision & Administration */}
-            <Route path="/admin" element={<AdminSupervisionPage />} />
+            {/* Console de Supervision & Administration (Protégé Admin uniquement) */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <AdminSupervisionPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Abonnement mensuel 30 000 FCFA / mois (Protégé transporteurs & admin) */}
+            <Route
+              path="/abonnement"
+              element={
+                <ProtectedRoute requiredRoles={['truck_owner', 'driver', 'admin']}>
+                  <SubscriptionPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Redirection fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

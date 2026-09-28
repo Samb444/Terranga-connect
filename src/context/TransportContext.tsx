@@ -10,6 +10,11 @@ import type {
   Mission,
   AppNotification,
   UserRole,
+  Subscription,
+  Settlement,
+  FuelVoucher,
+  BusinessIntroducer,
+  PaymentRecord,
 } from '../types'
 import {
   MOCK_OWNER,
@@ -23,13 +28,27 @@ import {
   MOCK_NOTIFICATIONS,
 } from '../data/mockData'
 import {
-  calculateMissionEconomics,
   buildMissionTimeline,
   getMissionTracking,
   canPerformOperationalStep,
   formatCurrentDateTimeFr,
   generateDeliveryReceiptCode,
 } from '../lib/missionUtils'
+import {
+  calculateFullMissionEconomics,
+  DEFAULT_ADVANCE_PERCENT,
+  MONTHLY_SUBSCRIPTION_AMOUNT,
+  formatFcfa,
+} from '../lib/financeUtils'
+import {
+  subscriptionRepository,
+  settlementRepository,
+  paymentRepository,
+  fuelVoucherRepository,
+  businessIntroducerRepository,
+} from '../repositories'
+import { getPaymentProvider } from '../services/payment'
+import { MockFuelVoucherProvider } from '../services/fuel'
 import type { DeliveryConfirmation, OperationalEvent } from '../types'
 import {
   STORAGE_KEYS,
@@ -110,7 +129,7 @@ export interface TransportContextType {
   completeMission: (missionId: string) => boolean
   cancelMission: (missionId: string, reason?: string) => boolean
 
-  // Suivi opérationnel & Livraison - Phase 7
+  // Suivi opérationnel & Livraison - Phase 7 & 8
   confirmPickup: (missionId: string, details?: { location?: string; notes?: string }) => boolean
   startTransit: (missionId: string, details?: { notes?: string }) => boolean
   signalArrival: (missionId: string, details?: { location?: string; notes?: string }) => boolean
@@ -123,6 +142,52 @@ export interface TransportContextType {
       receiptCode?: string
     }
   ) => boolean
+
+  // --- EXTENSIONS PHASE 9 : CAHIER DES CHARGES ---
+  // Abonnements (30 000 FCFA/mois)
+  subscriptions: Subscription[]
+  userSubscription?: Subscription
+  subscribeToMonthlyPlan: (details?: {
+    truckMatricule?: string
+    paymentProvider?: 'wave' | 'orange_money' | 'mock'
+  }) => Promise<{ success: boolean; subscription?: Subscription; message: string }>
+  cancelSubscription: (subscriptionId: string) => boolean
+
+  // Règlements & Escrow
+  settlements: Settlement[]
+  getSettlementByMissionId: (missionId: string) => Settlement | undefined
+  fundMissionByShipper: (
+    missionId: string,
+    paymentProvider?: 'wave' | 'orange_money' | 'mock'
+  ) => Promise<{ success: boolean; message: string }>
+  releaseTransporterSettlement: (
+    missionId: string
+  ) => Promise<{ success: boolean; message: string }>
+
+  // Bons carburant numériques (Avance 10-15%)
+  fuelVouchers: FuelVoucher[]
+  getVoucherForMission: (missionId: string) => FuelVoucher | undefined
+  issueFuelVoucherForMission: (
+    missionId: string,
+    preferredNetwork?: 'Total' | 'Elton' | 'Shell' | 'Oryx'
+  ) => Promise<FuelVoucher | null>
+  redeemFuelVoucher: (voucherId: string) => Promise<boolean>
+
+  // Coxeurs / Apporteurs d'affaires
+  businessIntroducers: BusinessIntroducer[]
+  addBusinessIntroducer: (data: {
+    name: string
+    phone: string
+    city: string
+    notes?: string
+  }) => BusinessIntroducer
+  toggleIntroducerStatus: (
+    id: string,
+    newStatus: 'pending' | 'active' | 'suspended'
+  ) => boolean
+
+  // Journal des flux financiers
+  payments: PaymentRecord[]
 
   // Requêtes
   getMissionById: (missionId: string) => Mission | undefined
@@ -183,6 +248,27 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     loadFromStorage<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, MOCK_NOTIFICATIONS)
   )
 
+  // --- NOUVEAUX ÉTATS PHASE 9 ---
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() =>
+    subscriptionRepository.getSubscriptions()
+  )
+
+  const [settlements, setSettlements] = useState<Settlement[]>(() =>
+    settlementRepository.getSettlements()
+  )
+
+  const [fuelVouchers, setFuelVouchers] = useState<FuelVoucher[]>(() =>
+    fuelVoucherRepository.getVouchers()
+  )
+
+  const [businessIntroducers, setBusinessIntroducers] = useState<BusinessIntroducer[]>(() =>
+    businessIntroducerRepository.getIntroducers()
+  )
+
+  const [payments, setPayments] = useState<PaymentRecord[]>(() =>
+    paymentRepository.getPayments()
+  )
+
   // Persistance automatique dans le localStorage
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.OWNER, owner)
@@ -227,6 +313,26 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications)
   }, [notifications])
+
+  useEffect(() => {
+    subscriptionRepository.saveSubscriptions(subscriptions)
+  }, [subscriptions])
+
+  useEffect(() => {
+    settlementRepository.saveSettlements(settlements)
+  }, [settlements])
+
+  useEffect(() => {
+    fuelVoucherRepository.saveVouchers(fuelVouchers)
+  }, [fuelVouchers])
+
+  useEffect(() => {
+    businessIntroducerRepository.saveIntroducers(businessIntroducers)
+  }, [businessIntroducers])
+
+  useEffect(() => {
+    paymentRepository.savePayments(payments)
+  }, [payments])
 
   // Rôle actif
   const setActiveRole = (role: UserRole) => {
@@ -501,12 +607,13 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const isReturn = opp?.isReturnTrip ?? false
     const priceText = opp?.estimatedPrice || '200 000 FCFA (Indicatif)'
-    const economics = calculateMissionEconomics(priceText, isReturn)
+    const economics = calculateFullMissionEconomics(priceText, isReturn, DEFAULT_ADVANCE_PERCENT)
 
     const missionId = `mission-demo-${Date.now()}`
     const originShort = (opp?.origin || 'DKR').substring(0, 3).toUpperCase()
     const destShort = (opp?.destination || 'REG').substring(0, 3).toUpperCase()
     const codeSuffix = Math.floor(10 + Math.random() * 90)
+    const settlementId = `stl-${missionId}`
 
     const newMission: Mission = {
       id: missionId,
@@ -534,10 +641,13 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       tripType: isReturn ? 'return_cargo' : 'one_way',
       estimatedDistance: opp ? opp.distanceKm : 100,
       estimatedPrice: priceText,
-      estimatedAmountFcfa: economics.totalEstimatedAmount,
+      estimatedAmountFcfa: economics.grossAmount,
       commissionRate: economics.commissionRate,
       commissionAmountFcfa: economics.commissionAmount,
-      commissionLabel: economics.commissionPercentLabel,
+      commissionLabel: economics.commissionLabel,
+      advancePercent: economics.advancePercent,
+      advanceAmountFcfa: economics.advanceAmount,
+      settlementId,
       status: 'accepted',
       createdAt: 'À l’instant (Démonstration)',
       acceptedAt: 'À l’instant (Démonstration)',
@@ -548,6 +658,26 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       notes: `Mission créée suite à l'acceptation de la candidature de ${app.driverName}.`,
       isDemo: true,
     }
+
+    // Création du settlement financier initial (Phase 9)
+    const newSettlement: Settlement = {
+      id: settlementId,
+      missionId,
+      missionCode: newMission.missionCode,
+      grossAmount: economics.grossAmount,
+      advancePercent: economics.advancePercent,
+      advanceAmount: economics.advanceAmount,
+      commissionRate: economics.commissionRate,
+      commissionAmount: economics.commissionAmount,
+      transporterAmount: economics.transporterGrossAmount,
+      remainingBalance: economics.transporterFinalSolde,
+      status: 'funded', // Fonds consignés en amont par le chargeur
+      paymentProvider: 'Wave / Escrow Teranga (Simulé)',
+      fundedAt: formatCurrentDateTimeFr(),
+      createdAt: formatCurrentDateTimeFr(),
+      notes: 'Provisionné en amont par le chargeur sous séquestre Teranga Connect.',
+    }
+    setSettlements((prev) => [newSettlement, ...prev])
 
     const updatedApplication: Application = {
       ...app,
@@ -754,6 +884,41 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
+    // Mise à jour financière : avance versée (Phase 9)
+    const advAmount =
+      targetMission.advanceAmountFcfa || Math.round(targetMission.estimatedAmountFcfa * 0.10)
+
+    setSettlements((prev) =>
+      prev.map((s) =>
+        s.missionId === missionId
+          ? {
+              ...s,
+              status: s.status === 'funded' ? 'advance_paid' : s.status,
+              advancePaidAt: nowStr,
+              notes: 'Avance carburant et péages émise sous forme de bon numérique.',
+            }
+          : s
+      )
+    )
+
+    // Émission automatique du bon carburant numérique si pas encore créé
+    const existingVoucher = fuelVouchers.find((v) => v.missionId === missionId)
+    if (!existingVoucher) {
+      const provider = new MockFuelVoucherProvider()
+      provider
+        .issueVoucher({
+          missionId,
+          missionCode: targetMission.missionCode,
+          amount: advAmount,
+          beneficiaryId: targetMission.driverId,
+          beneficiaryName: targetMission.driverName,
+          preferredStationNetwork: 'Total',
+        })
+        .then((voucher) => {
+          setFuelVouchers((prev) => [voucher, ...prev])
+        })
+    }
+
     addNotification({
       type: 'mission',
       title: 'Mission démarrée',
@@ -761,6 +926,15 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       relatedId: targetMission.id,
       link: `/missions/${targetMission.id}`,
       targetRole: 'all',
+    })
+
+    addNotification({
+      type: 'payment',
+      title: 'Avance carburant disponible',
+      message: `Votre bon de carburant numérique de ${formatFcfa(advAmount)} a été émis pour le départ de la mission ${targetMission.missionCode}.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'driver',
     })
 
     return true
@@ -1154,6 +1328,21 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       )
     }
 
+    // Mise à jour financière : passage en attente de déblocage solde (Phase 9)
+    setSettlements((prev) =>
+      prev.map((s) => {
+        if (s.missionId === missionId) {
+          return {
+            ...s,
+            status: 'settlement_pending',
+            deliveryConfirmedAt: nowStr,
+            notes: `Livraison confirmée avec émargement (${receiptCode}). En attente de validation du règlement final.`,
+          }
+        }
+        return s
+      })
+    )
+
     addNotification({
       type: 'mission',
       title: 'Livraison confirmée',
@@ -1163,6 +1352,403 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       targetRole: 'all',
     })
 
+    // Notifications financières dédiées
+    addNotification({
+      type: 'payment',
+      title: 'Mission livrée — Règlement en attente',
+      message: `La livraison de la mission ${targetMission.missionCode} est validée. Votre solde restant sera versé dès validation administrative.`,
+      relatedId: targetMission.id,
+      link: `/missions/${targetMission.id}`,
+      targetRole: 'truck_owner',
+    })
+
+    addNotification({
+      type: 'payment',
+      title: 'Règlement en attente de validation',
+      message: `La mission ${targetMission.missionCode} a été livrée avec récépissé conforme (${receiptCode}). Dossier financier prêt pour déblocage.`,
+      relatedId: targetMission.id,
+      link: '/admin',
+      targetRole: 'admin',
+    })
+
+    return true
+  }
+
+  // --- CALCULS ET ACTIONS PHASE 9 : CAHIER DES CHARGES ---
+  const userSubscription = useMemo(() => {
+    const currentUserId = activeRole === 'driver' ? driver.id : owner.id
+    return subscriptions.find((s) => s.userId === currentUserId)
+  }, [subscriptions, activeRole, driver.id, owner.id])
+
+  const subscribeToMonthlyPlan = async (details?: {
+    truckMatricule?: string
+    paymentProvider?: 'wave' | 'orange_money' | 'mock'
+  }): Promise<{ success: boolean; subscription?: Subscription; message: string }> => {
+    const providerId = details?.paymentProvider || 'mock'
+    const provider = getPaymentProvider(providerId)
+    const payerName = activeRole === 'driver' ? driver.fullName : owner.fullName
+    const payerPhone = activeRole === 'driver' ? driver.phone : owner.phone
+    const currentUserId = activeRole === 'driver' ? driver.id : owner.id
+    const matricule =
+      details?.truckMatricule ||
+      (trucks.length > 0 ? trucks[0].matricule : 'DK-2024-TR [Fictif]')
+
+    const payResult = await provider.createPayment({
+      amount: MONTHLY_SUBSCRIPTION_AMOUNT,
+      currency: 'FCFA',
+      reference: `SUB-${Date.now()}`,
+      description: 'Abonnement mensuel transporteur Teranga Connect (30 000 FCFA/mois)',
+      payerName,
+      payerPhone,
+    })
+
+    if (!payResult.success) {
+      return { success: false, message: payResult.message }
+    }
+
+    const now = new Date()
+    const expiry = new Date(now)
+    expiry.setDate(expiry.getDate() + 30)
+
+    const nowFormatted = formatCurrentDateTimeFr(now)
+    const expiryFormatted = formatCurrentDateTimeFr(expiry)
+
+    const newSub: Subscription = {
+      id: `sub-${Date.now()}`,
+      userId: currentUserId,
+      userRole: activeRole,
+      userName: payerName,
+      truckMatricule: matricule,
+      plan: 'monthly_truck',
+      amount: MONTHLY_SUBSCRIPTION_AMOUNT,
+      currency: 'FCFA',
+      status: 'active',
+      startedAt: nowFormatted,
+      expiresAt: expiryFormatted,
+      paymentStatus: 'paid',
+      paymentProvider:
+        providerId === 'wave'
+          ? 'Wave (Simulé)'
+          : providerId === 'orange_money'
+          ? 'Orange Money (Simulé)'
+          : 'Démonstration simulée',
+      createdAt: nowFormatted,
+      renewalCount: 1,
+    }
+
+    setSubscriptions((prev) => {
+      const filtered = prev.filter((s) => s.userId !== currentUserId)
+      return [newSub, ...filtered]
+    })
+
+    const newPay: PaymentRecord = {
+      id: `pay-sub-${Date.now()}`,
+      reference: payResult.reference,
+      amount: MONTHLY_SUBSCRIPTION_AMOUNT,
+      currency: 'FCFA',
+      type: 'subscription',
+      relatedEntityId: newSub.id,
+      status: 'successful',
+      provider: providerId,
+      providerTransactionId: payResult.transactionId,
+      payerName,
+      payerPhone,
+      createdAt: nowFormatted,
+      completedAt: nowFormatted,
+      isSimulated: payResult.isSimulated,
+    }
+
+    setPayments((prev) => [newPay, ...prev])
+
+    addNotification({
+      type: 'payment',
+      title: 'Abonnement activé (30 000 FCFA/mois)',
+      message: `Votre abonnement mensuel matériel pour le véhicule ${matricule} a été activé avec succès. Échéance : ${expiryFormatted}.`,
+      targetRole: activeRole,
+      link: '/abonnement',
+    })
+
+    return {
+      success: true,
+      subscription: newSub,
+      message: `Abonnement souscrit avec succès (${payResult.message}).`,
+    }
+  }
+
+  const cancelSubscription = (subscriptionId: string): boolean => {
+    setSubscriptions((prev) =>
+      prev.map((s) => (s.id === subscriptionId ? { ...s, status: 'cancelled' } : s))
+    )
+    addNotification({
+      type: 'system',
+      title: 'Abonnement résilié',
+      message: 'Votre abonnement a été marqué comme résilié.',
+      targetRole: activeRole,
+      link: '/abonnement',
+    })
+    return true
+  }
+
+  const getSettlementByMissionId = (missionId: string): Settlement | undefined => {
+    return settlements.find((s) => s.missionId === missionId)
+  }
+
+  const fundMissionByShipper = async (
+    missionId: string,
+    providerId: 'wave' | 'orange_money' | 'mock' = 'mock'
+  ): Promise<{ success: boolean; message: string }> => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return { success: false, message: 'Mission introuvable.' }
+
+    const stl = settlements.find((s) => s.missionId === missionId)
+    const amount = stl ? stl.grossAmount : targetMission.estimatedAmountFcfa
+
+    const provider = getPaymentProvider(providerId)
+    const payResult = await provider.createPayment({
+      amount,
+      currency: 'FCFA',
+      reference: `FUND-${targetMission.missionCode}-${Date.now()}`,
+      description: `Financement séquestre mission ${targetMission.missionCode}`,
+      payerName: shipper.fullName,
+      payerPhone: shipper.phone,
+    })
+
+    if (!payResult.success) {
+      addNotification({
+        type: 'payment',
+        title: 'Échec de paiement',
+        message: payResult.message,
+        targetRole: 'admin',
+      })
+      return { success: false, message: payResult.message }
+    }
+
+    const nowStr = formatCurrentDateTimeFr()
+    const paymentRecord: PaymentRecord = {
+      id: `pay-fund-${Date.now()}`,
+      reference: payResult.reference,
+      amount,
+      currency: 'FCFA',
+      type: 'mission_funding',
+      relatedEntityId: missionId,
+      status: 'successful',
+      provider: providerId,
+      providerTransactionId: payResult.transactionId,
+      payerName: shipper.fullName,
+      payerPhone: shipper.phone,
+      createdAt: nowStr,
+      completedAt: nowStr,
+      isSimulated: payResult.isSimulated,
+    }
+
+    setPayments((prev) => [paymentRecord, ...prev])
+
+    setSettlements((prev) =>
+      prev.map((s) =>
+        s.missionId === missionId
+          ? {
+              ...s,
+              status: 'funded',
+              fundedAt: nowStr,
+              paymentProvider: `${providerId === 'wave' ? 'Wave' : providerId === 'orange_money' ? 'Orange Money' : 'Simulé'}`,
+            }
+          : s
+      )
+    )
+
+    addNotification({
+      type: 'payment',
+      title: 'Mission financée avec succès',
+      message: `Le paiement de ${formatFcfa(amount)} pour la mission ${targetMission.missionCode} est consigné sous séquestre Teranga Connect.`,
+      relatedId: missionId,
+      link: `/missions/${missionId}`,
+      targetRole: 'shipper',
+    })
+
+    addNotification({
+      type: 'payment',
+      title: 'Fonds sécurisés pour votre trajet',
+      message: `Le chargeur a consigné les fonds pour la mission ${targetMission.missionCode}. Votre avance de trésorerie est garantie.`,
+      relatedId: missionId,
+      link: `/missions/${missionId}`,
+      targetRole: 'truck_owner',
+    })
+
+    return {
+      success: true,
+      message: `Fonds sécurisés avec succès (${payResult.message}).`,
+    }
+  }
+
+  const releaseTransporterSettlement = async (
+    missionId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const stl = settlements.find((s) => s.missionId === missionId)
+    if (!stl) {
+      return { success: false, message: 'Dossier de règlement introuvable.' }
+    }
+
+    if (stl.status !== 'settlement_pending' && stl.status !== 'delivery_confirmed') {
+      return {
+        success: false,
+        message: 'Le règlement ne peut être soldé qu’après confirmation de livraison (POD).',
+      }
+    }
+
+    const nowStr = formatCurrentDateTimeFr()
+    const paymentProvider = getPaymentProvider('mock')
+    const payResult = await paymentProvider.createPayment({
+      amount: stl.remainingBalance,
+      currency: 'FCFA',
+      reference: `SETTLE-${stl.missionCode}-${Date.now()}`,
+      description: `Règlement solde transporteur mission ${stl.missionCode}`,
+      payerName: 'Teranga Connect Escrow',
+    })
+
+    const newPayment: PaymentRecord = {
+      id: `pay-stl-${Date.now()}`,
+      reference: payResult.reference,
+      amount: stl.remainingBalance,
+      currency: 'FCFA',
+      type: 'settlement',
+      relatedEntityId: stl.id,
+      status: 'successful',
+      provider: 'mock',
+      providerTransactionId: payResult.transactionId,
+      payerName: 'Teranga Connect Escrow',
+      createdAt: nowStr,
+      completedAt: nowStr,
+      isSimulated: true,
+    }
+
+    setPayments((prev) => [newPayment, ...prev])
+
+    setSettlements((prev) =>
+      prev.map((s) =>
+        s.id === stl.id
+          ? {
+              ...s,
+              status: 'settled',
+              settledAt: nowStr,
+              notes: 'Règlement solde final versé avec succès au transporteur (Démonstration).',
+            }
+          : s
+      )
+    )
+
+    addNotification({
+      type: 'payment',
+      title: 'Règlement solde effectué',
+      message: `Le solde final de ${formatFcfa(stl.remainingBalance)} pour la mission ${stl.missionCode} a été versé sur votre compte (Démonstration).`,
+      relatedId: missionId,
+      link: `/missions/${missionId}`,
+      targetRole: 'truck_owner',
+    })
+
+    addNotification({
+      type: 'payment',
+      title: 'Clôture financière de mission',
+      message: `Le dossier financier de la mission ${stl.missionCode} a été entièrement soldé et archivé.`,
+      relatedId: missionId,
+      link: `/missions/${missionId}`,
+      targetRole: 'shipper',
+    })
+
+    return {
+      success: true,
+      message: `Règlement de ${formatFcfa(stl.remainingBalance)} validé et versé (Simulation démo).`,
+    }
+  }
+
+  const getVoucherForMission = (missionId: string): FuelVoucher | undefined => {
+    return fuelVouchers.find((v) => v.missionId === missionId)
+  }
+
+  const issueFuelVoucherForMission = async (
+    missionId: string,
+    preferredNetwork: 'Total' | 'Elton' | 'Shell' | 'Oryx' = 'Total'
+  ): Promise<FuelVoucher | null> => {
+    const targetMission = missions.find((m) => m.id === missionId)
+    if (!targetMission) return null
+
+    const existing = fuelVouchers.find((v) => v.missionId === missionId)
+    if (existing) return existing
+
+    const amount =
+      targetMission.advanceAmountFcfa ||
+      Math.round(targetMission.estimatedAmountFcfa * 0.10)
+
+    const provider = new MockFuelVoucherProvider()
+    const voucher = await provider.issueVoucher({
+      missionId,
+      missionCode: targetMission.missionCode,
+      amount,
+      beneficiaryId: targetMission.driverId,
+      beneficiaryName: targetMission.driverName,
+      preferredStationNetwork: preferredNetwork,
+    })
+
+    setFuelVouchers((prev) => [voucher, ...prev])
+    return voucher
+  }
+
+  const redeemFuelVoucher = async (voucherId: string): Promise<boolean> => {
+    const voucher = fuelVouchers.find((v) => v.id === voucherId)
+    if (!voucher) return false
+
+    const provider = new MockFuelVoucherProvider()
+    const updated = await provider.redeemVoucher(voucher)
+
+    setFuelVouchers((prev) => prev.map((v) => (v.id === voucherId ? updated : v)))
+
+    addNotification({
+      type: 'payment',
+      title: 'Bon carburant consommé',
+      message: `Le bon carburant ${voucher.reference} de ${formatFcfa(voucher.amount)} a été émargé en station partenaire.`,
+      targetRole: 'driver',
+    })
+
+    return true
+  }
+
+  const addBusinessIntroducer = (data: {
+    name: string
+    phone: string
+    city: string
+    notes?: string
+  }): BusinessIntroducer => {
+    const newIntro: BusinessIntroducer = {
+      id: `intro-${Date.now()}`,
+      name: data.name,
+      phone: data.phone,
+      city: data.city,
+      status: 'active',
+      introducedMissions: 0,
+      commissionStatus: 'Règles de commission à définir',
+      notes: data.notes || 'Nouvel apporteur d’affaires enregistré.',
+      createdAt: formatCurrentDateTimeFr(),
+    }
+
+    setBusinessIntroducers((prev) => [newIntro, ...prev])
+
+    addNotification({
+      type: 'system',
+      title: 'Nouvel apporteur d’affaires enregistré',
+      message: `${newIntro.name} a été référencé comme intermédiaire partenaire.`,
+      targetRole: 'admin',
+      link: '/admin',
+    })
+
+    return newIntro
+  }
+
+  const toggleIntroducerStatus = (
+    id: string,
+    newStatus: 'pending' | 'active' | 'suspended'
+  ): boolean => {
+    setBusinessIntroducers((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status: newStatus } : i))
+    )
     return true
   }
 
@@ -1188,6 +1774,11 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setDriverStatusState('available')
     setInterestedOpportunityIds(Array.from(new Set(MOCK_APPLICATIONS.map((a) => a.opportunityId))))
     setNotifications(MOCK_NOTIFICATIONS)
+    setSubscriptions(subscriptionRepository.getSubscriptions())
+    setSettlements(settlementRepository.getSettlements())
+    setFuelVouchers(fuelVoucherRepository.getVouchers())
+    setBusinessIntroducers(businessIntroducerRepository.getIntroducers())
+    setPayments(paymentRepository.getPayments())
   }
 
   return (
@@ -1232,6 +1823,22 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         startTransit,
         signalArrival,
         confirmDelivery,
+        subscriptions,
+        userSubscription,
+        subscribeToMonthlyPlan,
+        cancelSubscription,
+        settlements,
+        getSettlementByMissionId,
+        fundMissionByShipper,
+        releaseTransporterSettlement,
+        fuelVouchers,
+        getVoucherForMission,
+        issueFuelVoucherForMission,
+        redeemFuelVoucher,
+        businessIntroducers,
+        addBusinessIntroducer,
+        toggleIntroducerStatus,
+        payments,
         getMissionById,
         getApplicationById,
         resetDemoData,

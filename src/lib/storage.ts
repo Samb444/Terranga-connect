@@ -15,6 +15,11 @@ export const STORAGE_KEYS = {
   NOTIFICATIONS: 'tc_demo_notifications_v5',
   ACTIVE_ROLE: 'tc_demo_active_role_v5',
   INTERESTED_IDS: 'tc_demo_interested_ids_v5',
+  SUBSCRIPTIONS: 'tc_demo_subscriptions_v9',
+  SETTLEMENTS: 'tc_demo_settlements_v9',
+  PAYMENTS: 'tc_demo_payments_v9',
+  FUEL_VOUCHERS: 'tc_demo_fuel_vouchers_v9',
+  BUSINESS_INTRODUCERS: 'tc_demo_business_introducers_v9',
 } as const
 
 /**

@@ -244,6 +244,10 @@ export interface Mission {
   commissionRate: number // ex: 0.30 pour 30%, 0.40 pour retour
   commissionAmountFcfa: number
   commissionLabel: string
+  advancePercent?: number // 10% à 15% (défaut 10%)
+  advanceAmountFcfa?: number
+  settlementId?: string
+  fuelVoucherId?: string
   status: MissionStatus
   createdAt: string
   acceptedAt?: string
@@ -319,7 +323,7 @@ export interface SystemHealth {
 /**
  * Types de notifications applicatives
  */
-export type NotificationType = 'application' | 'mission' | 'opportunity' | 'system'
+export type NotificationType = 'application' | 'mission' | 'opportunity' | 'system' | 'payment'
 
 /**
  * Structure d'une notification du centre de notifications
@@ -340,4 +344,148 @@ export interface AppNotification {
  * Alias de compatibilité
  */
 export type Notification = AppNotification
+
+/**
+ * ========================================================
+ * PHASE 9 — EXTENSIONS DU CAHIER DES CHARGES
+ * ========================================================
+ */
+
+/**
+ * Statuts possibles d'un abonnement mensuel
+ */
+export type SubscriptionStatus =
+  | 'inactive'
+  | 'pending'
+  | 'active'
+  | 'expired'
+  | 'cancelled'
+
+/**
+ * Structure d'un abonnement matériel (30 000 FCFA/mois)
+ */
+export interface Subscription {
+  id: string
+  userId: string
+  userRole: UserRole
+  userName: string
+  truckMatricule?: string
+  plan: 'monthly_truck'
+  amount: number // 30 000 FCFA
+  currency: 'FCFA' | 'XOF'
+  status: SubscriptionStatus
+  startedAt?: string
+  expiresAt?: string
+  paymentStatus: 'unpaid' | 'pending' | 'paid' | 'failed'
+  paymentProvider?: string
+  createdAt: string
+  renewalCount?: number
+}
+
+/**
+ * Statuts possibles du cycle financier d'une mission
+ */
+export type SettlementStatus =
+  | 'pending'
+  | 'funded'
+  | 'advance_paid'
+  | 'delivery_confirmed'
+  | 'settlement_pending'
+  | 'settled'
+  | 'failed'
+
+/**
+ * Modèle de règlement financier (Settlement)
+ */
+export interface Settlement {
+  id: string
+  missionId: string
+  missionCode: string
+  grossAmount: number
+  advancePercent: number
+  advanceAmount: number
+  commissionRate: number
+  commissionAmount: number
+  transporterAmount: number
+  remainingBalance: number
+  status: SettlementStatus
+  paymentProvider: string
+  fundedAt?: string
+  advancePaidAt?: string
+  deliveryConfirmedAt?: string
+  settledAt?: string
+  createdAt: string
+  notes?: string
+}
+
+/**
+ * Statuts possibles d'un bon de carburant numérique
+ */
+export type FuelVoucherStatus =
+  | 'pending'
+  | 'issued'
+  | 'used'
+  | 'cancelled'
+  | 'expired'
+
+/**
+ * Modèle d'un bon de carburant numérique
+ */
+export interface FuelVoucher {
+  id: string
+  missionId: string
+  missionCode: string
+  amount: number
+  beneficiaryId: string
+  beneficiaryName: string
+  status: FuelVoucherStatus
+  provider: 'Total' | 'Elton' | 'Shell' | 'Oryx' | 'Simulé'
+  reference: string
+  stationPartner?: string
+  issuedAt: string
+  usedAt?: string
+  notes?: string
+}
+
+/**
+ * Statuts d'un apporteur d'affaires (Coxeur / Intermédiaire)
+ */
+export type BusinessIntroducerStatus = 'pending' | 'active' | 'suspended'
+
+/**
+ * Modèle conceptuel d'un apporteur d'affaires
+ */
+export interface BusinessIntroducer {
+  id: string
+  name: string
+  phone: string
+  city: string
+  status: BusinessIntroducerStatus
+  introducedMissions: number
+  commissionStatus: string // "Règles de commission à définir"
+  notes?: string
+  createdAt: string
+}
+
+/**
+ * Journal des transactions / paiements
+ */
+export type PaymentStatus = 'pending' | 'successful' | 'failed'
+
+export interface PaymentRecord {
+  id: string
+  reference: string
+  amount: number
+  currency: string
+  type: 'subscription' | 'mission_funding' | 'advance' | 'settlement'
+  relatedEntityId: string
+  status: PaymentStatus
+  provider: 'wave' | 'orange_money' | 'mock'
+  providerTransactionId?: string
+  payerName: string
+  payerPhone?: string
+  createdAt: string
+  completedAt?: string
+  isSimulated: boolean
+}
 

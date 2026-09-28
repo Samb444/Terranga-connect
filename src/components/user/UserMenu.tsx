@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Building2,
   CheckCircle2,
+  CreditCard,
 } from 'lucide-react'
 import { useTransport } from '../../hooks/useTransport'
 import { ResetDemoModal } from '../modals/ResetDemoModal'
@@ -310,6 +311,20 @@ export const UserMenu: React.FC<UserMenuProps> = ({ className }) => {
                   </span>
                   <span className="text-[11px] text-slate-400 block">
                     Tableau de bord opérationnel
+                  </span>
+                </div>
+              </Link>
+
+              <Link
+                to="/abonnement"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-200 hover:text-white hover:bg-slate-800/80 transition-colors"
+              >
+                <CreditCard className="w-4 h-4 text-emerald-400" />
+                <div className="flex-1">
+                  <span className="font-semibold block">Abonnement (30 000 FCFA)</span>
+                  <span className="text-[11px] text-slate-400 block">
+                    Formule matériel & statut actif
                   </span>
                 </div>
               </Link>

@@ -15,6 +15,7 @@ import {
   ClipboardList,
   CheckCheck,
   Bell,
+  CreditCard,
 } from 'lucide-react'
 import { DashboardLayout, type NavItemConfig } from '../layouts/DashboardLayout'
 import { StatCard } from '../components/dashboard/StatCard'
@@ -88,6 +89,12 @@ export const DriverDashboardPage: React.FC = () => {
       icon: <Bell className="w-4 h-4" />,
       badge: unreadNotificationsCount > 0 ? String(unreadNotificationsCount) : undefined,
       route: '/notifications',
+    },
+    {
+      id: 'subscription',
+      label: 'Abonnement (30k)',
+      icon: <CreditCard className="w-4 h-4" />,
+      route: '/abonnement',
     },
     { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" />, route: '/profil' },
   ]

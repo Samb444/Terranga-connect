@@ -141,58 +141,47 @@ export const MISSION_STATUS_CONFIG: Record<
   },
 }
 
-/**
- * Formatage de montants en FCFA
- */
-export function formatFcfa(amount: number): string {
-  return new Intl.NumberFormat('fr-FR').format(Math.round(amount)) + ' FCFA'
-}
+import {
+  formatFcfa,
+  parseFcfaAmount,
+  calculateFullMissionEconomics,
+  DEFAULT_ADVANCE_PERCENT,
+} from './financeUtils'
 
-/**
- * Parse un montant textuel (ex: "180 000 FCFA") en nombre
- */
-export function parseFcfaAmount(text?: string, fallback = 200000): number {
-  if (!text) return fallback
-  const numericStr = text.replace(/[^0-9]/g, '')
-  const parsed = parseInt(numericStr, 10)
-  return isNaN(parsed) || parsed === 0 ? fallback : parsed
-}
+export { formatFcfa, parseFcfaAmount }
 
 /**
  * Calcul du modèle économique indicatif
- * Hypothèses de démonstration :
- * - Aller : 30%
- * - Retour optimisé : 40%
- * - Avance carburant/péage estimée : 12% (10-15%)
+ * Conforme au cahier des charges :
+ * - Aller : 30 %
+ * - Retour optimisé : 40 %
+ * - Avance trésorerie : 10 % à 15 % (défaut 10 %)
  */
 export function calculateMissionEconomics(
   estimatedPrice: string | number,
-  isReturnTrip = false
+  isReturnTrip = false,
+  advancePercent = DEFAULT_ADVANCE_PERCENT
 ) {
-  const baseAmount =
-    typeof estimatedPrice === 'number'
-      ? estimatedPrice
-      : parseFcfaAmount(estimatedPrice)
-
-  const commissionRate = isReturnTrip ? 0.4 : 0.3
-  const commissionAmount = Math.round(baseAmount * commissionRate)
-  const driverNetEstimated = baseAmount - commissionAmount
-  const fuelAdvanceEstimated = Math.round(baseAmount * 0.12) // 12% d'avance estimée
+  const full = calculateFullMissionEconomics(estimatedPrice, isReturnTrip, advancePercent)
 
   return {
-    totalEstimatedAmount: baseAmount,
-    totalFormatted: formatFcfa(baseAmount),
-    commissionRate,
-    commissionPercentLabel: isReturnTrip ? '40 % (Fret Retour)' : '30 % (Fret Aller)',
-    commissionAmount,
-    commissionFormatted: formatFcfa(commissionAmount),
-    driverNetEstimated,
-    driverNetFormatted: formatFcfa(driverNetEstimated),
-    fuelAdvanceEstimated,
-    fuelAdvanceFormatted: formatFcfa(fuelAdvanceEstimated),
-    subscriptionNote: 'Abonnement matériel : 30 000 FCFA/mois (Modèle envisagé)',
+    totalEstimatedAmount: full.grossAmount,
+    totalFormatted: full.grossFormatted,
+    commissionRate: full.commissionRate,
+    commissionPercentLabel: full.commissionLabel,
+    commissionAmount: full.commissionAmount,
+    commissionFormatted: full.commissionFormatted,
+    driverNetEstimated: full.transporterGrossAmount,
+    driverNetFormatted: full.transporterGrossFormatted,
+    fuelAdvanceEstimated: full.advanceAmount,
+    fuelAdvanceFormatted: full.advanceFormatted,
+    transporterFinalSolde: full.transporterFinalSolde,
+    transporterFinalSoldeFormatted: full.transporterFinalSoldeFormatted,
+    remainingBalanceFormatted: full.transporterFinalSoldeFormatted,
+    advancePercent: full.advancePercent,
+    subscriptionNote: 'Abonnement matériel : 30 000 FCFA/mois par camion',
     disclaimer:
-      'Hypothèses de démonstration — modèle économique envisagé, non contractuel.',
+      'Hypothèses conformes au cahier des charges Teranga Connect (30 % aller, 40 % retour, avance 10–15 %).',
   }
 }
 

@@ -54,6 +54,10 @@ export const MissionDetailsPage: React.FC = () => {
     signalArrival,
     confirmDelivery,
     activeRole,
+    settlements,
+    fuelVouchers,
+    releaseTransporterSettlement,
+    redeemFuelVoucher,
   } = useTransport()
 
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false)
@@ -98,6 +102,27 @@ export const MissionDetailsPage: React.FC = () => {
     isReturn
   )
   const nextOperationalAction = getNextOperationalAction(mission)
+
+  const missionSettlement = settlements.find((s) => s.missionId === mission.id)
+  const missionFuelVoucher = fuelVouchers.find((v) => v.missionId === mission.id)
+
+  const handleReleaseSettlement = async (settlementId: string) => {
+    try {
+      await releaseTransporterSettlement(settlementId)
+      setFeedbackMessage('Règlement final validé et solde versé avec succès au transporteur !')
+    } catch (e) {
+      setFeedbackMessage(e instanceof Error ? e.message : 'Erreur lors du versement du solde.')
+    }
+  }
+
+  const handleRedeemVoucher = async (voucherId: string) => {
+    try {
+      await redeemFuelVoucher(voucherId)
+      setFeedbackMessage('Bon carburant consommé en station avec succès (simulation démo).')
+    } catch (e) {
+      setFeedbackMessage(e instanceof Error ? e.message : 'Erreur lors de la validation du bon.')
+    }
+  }
 
   // Gestion des actions du cycle général Phase 6
   const handleOpenActionModal = (actionType: MissionActionType) => {
@@ -540,7 +565,7 @@ export const MissionDetailsPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Modèle économique & Décomposition financière (Cahier des charges : 30% aller / 40% retour / séquestre / avance carburant) */}
+            {/* Modèle économique & Décomposition financière (Cahier des charges : 30% aller / 40% retour / séquestre / avance carburant 10-15%) */}
             <Card className="bg-slate-900/90 border-slate-800 p-6 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
                 <Coins className="w-4 h-4 text-amber-400" />
@@ -563,70 +588,206 @@ export const MissionDetailsPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between py-1 border-t border-slate-800/60">
-                  <span className="text-slate-400">Net versé au transporteur :</span>
-                  <span className="font-bold text-emerald-400">
-                    {economics.driverNetFormatted}
+                  <span className="text-slate-400">Avance carburant ({economics.advancePercent}%) :</span>
+                  <span className="font-medium text-amber-300">
+                    {economics.fuelAdvanceFormatted}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between py-1 border-t border-slate-800/60">
-                  <span className="text-slate-400">Avance carburant & péages (10-15%) :</span>
-                  <span className="font-medium text-slate-300">
-                    ~ {economics.fuelAdvanceFormatted}
+                  <span className="text-slate-400">Solde final après avance :</span>
+                  <span className="font-bold text-emerald-400">
+                    {economics.remainingBalanceFormatted}
                   </span>
                 </div>
               </div>
 
-              {/* Cycle Séquestre & Règlements (Wave / Orange Money) */}
-              <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                <span className="text-[10px] uppercase font-bold text-sky-400 tracking-wider block">
-                  Cycle de Séquestre & Libération des Fonds
-                </span>
-                
+              {/* État du Règlement Financier (Settlement) */}
+              <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-sky-400 tracking-wider">
+                    Cycle Financier (Séquestre & Settlement)
+                  </span>
+                  {missionSettlement && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        missionSettlement.status === 'settled'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          : missionSettlement.status === 'settlement_pending'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse'
+                          : missionSettlement.status === 'funded'
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                          : 'bg-slate-800 text-slate-300 border-slate-700'
+                      }`}
+                    >
+                      {missionSettlement.status === 'settled'
+                        ? 'Soldé / Clôturé'
+                        : missionSettlement.status === 'settlement_pending'
+                        ? 'En attente de versement solde'
+                        : missionSettlement.status === 'advance_paid'
+                        ? 'Avance versée'
+                        : missionSettlement.status === 'funded'
+                        ? 'Séquestre approvisionné'
+                        : missionSettlement.status === 'delivery_confirmed'
+                        ? 'Livraison confirmée'
+                        : 'En attente financement'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Progression financière distincte de la livraison */}
                 <div className="space-y-2 text-[11px]">
                   <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
                     <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                       ✓
                     </div>
                     <div>
-                      <span className="font-semibold text-white">Pré-paiement Donneur d'Ordre :</span>
-                      <p className="text-slate-400 text-[10px]">Fonds consignés à 100% sur compte séquestre avant chargement.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
-                    <div className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                      {mission.status === 'in_progress' || mission.status === 'completed' ? '✓' : '2'}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-white">Bon Carburant / Péages :</span>
-                      <p className="text-slate-400 text-[10px]">Avance numérique (12%) débloquée dès le départ confirmé.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
-                    <div className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                      {mission.status === 'completed' ? '✓' : '3'}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-white">Solde Net Wave / Orange Money :</span>
+                      <span className="font-semibold text-white">Séquestre Chargeur :</span>
                       <p className="text-slate-400 text-[10px]">
-                        {mission.status === 'completed' 
-                          ? 'Transféré au transporteur suite à validation du bordereau émargé.'
-                          : 'Versé automatiquement sous 2h dès confirmation du bordereau de livraison.'}
+                        {missionSettlement?.status === 'pending'
+                          ? 'En attente de consignation des fonds.'
+                          : 'Fonds sécurisés à 100% sur compte séquestre Teranga.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                    <div
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
+                        missionSettlement &&
+                        ['advance_paid', 'delivery_confirmed', 'settlement_pending', 'settled'].includes(
+                          missionSettlement.status
+                        )
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-amber-500/20 text-amber-400'
+                      }`}
+                    >
+                      {missionSettlement &&
+                      ['advance_paid', 'delivery_confirmed', 'settlement_pending', 'settled'].includes(
+                        missionSettlement.status
+                      )
+                        ? '✓'
+                        : '2'}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white">
+                        Avance Carburant & Péages ({economics.advancePercent}%) :
+                      </span>
+                      <p className="text-slate-400 text-[10px]">
+                        {missionFuelVoucher
+                          ? `Bon numérique émis (${missionFuelVoucher.reference})`
+                          : 'Débloqué dès départ confirmé'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                    <div
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
+                        missionSettlement?.status === 'settled'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : missionSettlement?.status === 'settlement_pending'
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {missionSettlement?.status === 'settled' ? '✓' : '3'}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white">Solde Net Transporteur :</span>
+                      <p className="text-slate-400 text-[10px]">
+                        {missionSettlement?.status === 'settled'
+                          ? `Solde de ${economics.remainingBalanceFormatted} versé le ${missionSettlement.settledAt || 'récemment'}.`
+                          : missionSettlement?.status === 'settlement_pending'
+                          ? 'Livraison émargée. Étape financière requise pour débloquer le solde.'
+                          : 'Versé après confirmation contradictoire du bordereau POD.'}
                       </p>
                     </div>
                   </div>
                 </div>
+
+                {/* Action Déblocage Financier si settlement_pending */}
+                {missionSettlement?.status === 'settlement_pending' && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                      <Coins className="w-3.5 h-3.5" />
+                      <span>Règlement prêt à être débloqué</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      La livraison a été confirmée avec émargement. Conformément au cahier des charges, le statut financier ne passe pas automatiquement à « soldé » sans validation.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleReleaseSettlement(missionSettlement.id)}
+                      className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      <span>Débloquer le versement du solde ({economics.remainingBalanceFormatted})</span>
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {/* Mention obligatoire */}
+              {/* Bon Carburant Numérique Associé */}
+              {missionFuelVoucher && (
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">
+                      Bon Carburant Numérique
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        missionFuelVoucher.status === 'used'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}
+                    >
+                      {missionFuelVoucher.status === 'used' ? 'Consommé en station' : 'Disponible'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Réf. Bon :</span>
+                      <span className="font-mono font-bold text-white">{missionFuelVoucher.reference}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Réseau partenaire :</span>
+                      <span className="font-semibold text-slate-200">{missionFuelVoucher.provider}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Valeur avance :</span>
+                      <span className="font-bold text-amber-400">
+                        {economics.fuelAdvanceFormatted}
+                      </span>
+                    </div>
+                    {missionFuelVoucher.status === 'issued' && (
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRedeemVoucher(missionFuelVoucher.id)}
+                          className="w-full justify-center text-[11px] border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+                        >
+                          Simuler scan en station-service
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-slate-500 italic pt-1">
+                      ⚠️ Bon carburant simulé — intégration fournisseur à venir (Total, Elton, Shell, Oryx)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Mention obligatoire et intégrations réelles */}
               <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
                 <span className="font-semibold text-slate-300 block">
                   Règles économiques du cahier des charges :
                 </span>
                 <p className="leading-relaxed">
-                  30 % sur trajet aller, 40 % sur retour optimisé, abonnement matériel 30 000 FCFA/mois. Séquestre garanti protégeant transporteurs et donneurs d'ordre.
+                  30 % sur trajet aller, 40 % sur retour optimisé, abonnement matériel 30 000 FCFA/mois. Architecture prête pour intégration réelle Wave & Orange Money (mode démonstration actif).
                 </p>
               </div>
             </Card>
