@@ -20,6 +20,8 @@ import { cn } from '../lib/utils'
 import { NotificationBell } from '../components/notifications/NotificationBell'
 import { UserMenu } from '../components/user/UserMenu'
 
+import type { UserRole } from '../types'
+
 export interface NavItemConfig {
   id: string
   label: string
@@ -29,7 +31,7 @@ export interface NavItemConfig {
 }
 
 interface DashboardLayoutProps {
-  role: 'truck_owner' | 'driver'
+  role: UserRole
   activeTab: string
   onTabChange: (tabId: string) => void
   navItems: NavItemConfig[]
@@ -49,7 +51,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const location = useLocation()
 
   const isOwner = role === 'truck_owner'
-  const roleBadgeText = isOwner ? 'Propriétaire' : 'Chauffeur'
+  const isDriver = role === 'driver'
+  const isShipper = role === 'shipper'
+  const isAdmin = role === 'admin'
+
+  const roleBadgeText = isOwner
+    ? 'Propriétaire'
+    : isDriver
+    ? 'Chauffeur'
+    : isShipper
+    ? 'Chargeur'
+    : 'Admin'
+
+  const roleVariant = isOwner ? 'amber' : isDriver ? 'success' : isShipper ? 'default' : 'outline'
 
   return (
     <div className="min-h-screen flex flex-col bg-[#070d1e] text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -80,7 +94,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             {/* Badge Rôle requis */}
             <Badge
-              variant={isOwner ? 'amber' : 'success'}
+              variant={roleVariant}
               className="py-1 px-3 text-xs font-bold"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
@@ -88,7 +102,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </Badge>
 
             <Badge variant="outline" className="hidden lg:inline-flex text-[10px] text-slate-400 py-0.5 px-2">
-              Démonstration Phase 5
+              Teranga Connect
             </Badge>
           </div>
 
@@ -107,7 +121,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <Link
                 to="/proprietaire"
                 className={cn(
-                  'px-3 py-1.5 rounded-md font-medium transition-colors',
+                  'px-2.5 py-1.5 rounded-md font-medium transition-colors',
                   isOwner
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     : 'text-slate-400 hover:text-white'
@@ -118,8 +132,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <Link
                 to="/chauffeur"
                 className={cn(
-                  'px-3 py-1.5 rounded-md font-medium transition-colors',
-                  !isOwner
+                  'px-2.5 py-1.5 rounded-md font-medium transition-colors',
+                  isDriver
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     : 'text-slate-400 hover:text-white'
                 )}
@@ -127,8 +141,30 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 Chauffeur
               </Link>
               <Link
+                to="/chargeur"
+                className={cn(
+                  'px-2.5 py-1.5 rounded-md font-medium transition-colors',
+                  isShipper
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                Chargeur
+              </Link>
+              <Link
+                to="/admin"
+                className={cn(
+                  'px-2.5 py-1.5 rounded-md font-medium transition-colors',
+                  isAdmin
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                Admin
+              </Link>
+              <Link
                 to="/missions"
-                className="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-amber-300 transition-colors flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-md font-medium text-slate-400 hover:text-amber-300 transition-colors flex items-center gap-1"
               >
                 <Route className="w-3 h-3 text-amber-400" />
                 <span>Missions</span>

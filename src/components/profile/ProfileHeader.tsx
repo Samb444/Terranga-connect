@@ -10,13 +10,14 @@ import {
 } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import type { Owner, Driver } from '../../types'
+import type { Owner, Driver, Shipper, UserRole } from '../../types'
 import { cn } from '../../lib/utils'
 
 interface ProfileHeaderProps {
-  role: 'truck_owner' | 'driver'
+  role: UserRole
   owner: Owner
   driver: Driver
+  shipper?: Shipper
   onEditClick: () => void
   onToggleRole: () => void
 }
@@ -25,15 +26,41 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   role,
   owner,
   driver,
+  shipper,
   onEditClick,
   onToggleRole,
 }) => {
   const isOwner = role === 'truck_owner'
-  const currentName = isOwner ? owner.fullName : driver.fullName
-  const initials = isOwner ? 'MD' : 'IN'
+  const isDriver = role === 'driver'
+  const isShipper = role === 'shipper'
+
+  const currentName = isOwner
+    ? owner.fullName
+    : isShipper
+    ? (shipper?.fullName || 'Amadou Sylla')
+    : driver.fullName
+
+  const initials = isOwner ? 'MD' : isShipper ? 'AS' : 'IN'
+
   const memberSince = isOwner
     ? owner.memberSince || '15 Janvier 2026 [Démonstration]'
+    : isShipper
+    ? (shipper?.memberSince || '10 Décembre 2025 [Démonstration]')
     : driver.memberSince || '02 Février 2026 [Démonstration]'
+
+  const roleLabel = isOwner
+    ? 'Propriétaire de flotte'
+    : isShipper
+    ? 'Donneur d’ordre (Chargeur)'
+    : 'Chauffeur Poids Lourd'
+
+  const companyOrSub = isOwner
+    ? owner.companyName
+    : isShipper
+    ? (shipper?.companyName || 'Grands Moulins & Matériaux du Sahel')
+    : undefined
+
+  const nextRoleName = isOwner ? 'Chauffeur' : isDriver ? 'Chargeur' : 'Propriétaire'
 
   return (
     <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
@@ -46,6 +73,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center font-extrabold text-2xl sm:text-3xl border shadow-xl relative shrink-0',
               isOwner
                 ? 'bg-gradient-to-tr from-amber-600/30 to-amber-500/10 text-amber-300 border-amber-500/40 shadow-amber-950/30'
+                : isShipper
+                ? 'bg-gradient-to-tr from-blue-600/30 to-blue-500/10 text-blue-300 border-blue-500/40 shadow-blue-950/30'
                 : 'bg-gradient-to-tr from-emerald-600/30 to-emerald-500/10 text-emerald-300 border-emerald-500/40 shadow-emerald-950/30'
             )}
           >
@@ -55,10 +84,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 'absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-lg flex items-center justify-center border',
                 isOwner
                   ? 'bg-amber-500 text-slate-950 border-amber-400'
+                  : isShipper
+                  ? 'bg-blue-500 text-white border-blue-400'
                   : 'bg-emerald-500 text-slate-950 border-emerald-400'
               )}
             >
-              {isOwner ? <Truck className="w-3.5 h-3.5 stroke-[2.5]" /> : <User className="w-3.5 h-3.5 stroke-[2.5]" />}
+              {isOwner ? (
+                <Truck className="w-3.5 h-3.5 stroke-[2.5]" />
+              ) : isShipper ? (
+                <Building2 className="w-3.5 h-3.5 stroke-[2.5]" />
+              ) : (
+                <User className="w-3.5 h-3.5 stroke-[2.5]" />
+              )}
             </div>
           </div>
 
@@ -68,10 +105,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 {currentName}
               </h1>
               <Badge
-                variant={isOwner ? 'amber' : 'success'}
+                variant={isOwner ? 'amber' : isShipper ? 'outline' : 'success'}
                 className="text-xs py-0.5 px-2.5 font-bold"
               >
-                {isOwner ? 'Propriétaire de flotte' : 'Chauffeur Poids Lourd'}
+                {roleLabel}
               </Badge>
               <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-500/30">
                 Profil Démonstratif
@@ -79,10 +116,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-              {isOwner && (
+              {companyOrSub && (
                 <span className="flex items-center gap-1 text-slate-300 font-medium">
                   <Building2 className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{owner.companyName}</span>
+                  <span>{companyOrSub}</span>
                 </span>
               )}
               <span className="flex items-center gap-1">
@@ -100,10 +137,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             size="sm"
             onClick={onToggleRole}
             className="text-xs"
-            title="Basculer vers l'autre profil démo"
+            title="Basculer vers le profil suivant"
           >
             <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-            <span>Voir profil {isOwner ? 'Chauffeur' : 'Propriétaire'}</span>
+            <span>Passer en {nextRoleName}</span>
           </Button>
 
           <Button

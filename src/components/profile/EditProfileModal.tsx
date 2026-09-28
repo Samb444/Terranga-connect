@@ -4,29 +4,47 @@ import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { useTransport } from '../../hooks/useTransport'
 import { SENEGAL_CITIES } from '../../data/mockData'
+import type { UserRole } from '../../types'
 
 interface EditProfileModalProps {
   isOpen: boolean
   onClose: () => void
-  role: 'truck_owner' | 'driver'
+  role: UserRole
 }
 
 interface EditProfileFormProps {
-  role: 'truck_owner' | 'driver'
+  role: UserRole
   onClose: () => void
 }
 
 const EditProfileForm: React.FC<EditProfileFormProps> = ({ role, onClose }) => {
-  const { owner, driver, updateOwnerProfile, updateDriverProfile, addNotification } =
-    useTransport()
+  const {
+    owner,
+    driver,
+    shipper,
+    updateOwnerProfile,
+    updateDriverProfile,
+    updateShipperProfile,
+    addNotification,
+  } = useTransport()
 
   const isOwner = role === 'truck_owner'
+  const isShipper = role === 'shipper'
 
   // États locaux du formulaire initialisés directement depuis le state
-  const [fullName, setFullName] = useState(isOwner ? owner.fullName : driver.fullName)
-  const [phone, setPhone] = useState(isOwner ? owner.phone : driver.phone)
-  const [city, setCity] = useState(isOwner ? owner.city : driver.currentCity)
-  const [companyName, setCompanyName] = useState(owner.companyName)
+  const [fullName, setFullName] = useState(
+    isOwner ? owner.fullName : isShipper ? shipper.fullName : driver.fullName
+  )
+  const [phone, setPhone] = useState(
+    isOwner ? owner.phone : isShipper ? shipper.phone : driver.phone
+  )
+  const [city, setCity] = useState(
+    isOwner ? owner.city : isShipper ? shipper.city : driver.currentCity
+  )
+  const [companyName, setCompanyName] = useState(
+    isOwner ? owner.companyName : shipper.companyName
+  )
+  const [companyType, setCompanyType] = useState(shipper.companyType)
   const [licenseType, setLicenseType] = useState(driver.licenseType)
   const [experienceYears, setExperienceYears] = useState(driver.experienceYears.toString())
 
@@ -45,6 +63,20 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ role, onClose }) => {
         title: 'Profil Propriétaire mis à jour',
         message: 'Vos informations de démonstration ont été enregistrées localement.',
         targetRole: 'truck_owner',
+      })
+    } else if (isShipper) {
+      updateShipperProfile({
+        fullName: fullName.trim() || shipper.fullName,
+        phone: phone.trim() || shipper.phone,
+        city: city.trim() || shipper.city,
+        companyName: companyName.trim() || shipper.companyName,
+        companyType: companyType.trim() || shipper.companyType,
+      })
+      addNotification({
+        type: 'system',
+        title: 'Profil Chargeur mis à jour',
+        message: 'Vos informations de donneur d’ordre ont été enregistrées localement.',
+        targetRole: 'shipper',
       })
     } else {
       updateDriverProfile({
@@ -80,11 +112,11 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ role, onClose }) => {
         />
       </div>
 
-      {/* Entreprise (si propriétaire) */}
-      {isOwner && (
+      {/* Entreprise (si propriétaire ou chargeur) */}
+      {(isOwner || isShipper) && (
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Raison sociale / Société de transport
+            {isOwner ? 'Raison sociale / Société de transport' : 'Raison sociale / Entité Donneur d’ordre'}
           </label>
           <Input
             value={companyName}
@@ -95,10 +127,29 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ role, onClose }) => {
         </div>
       )}
 
+      {/* Secteur d'activité (si chargeur) */}
+      {isShipper && (
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            Secteur d'activité logistique / Donneur d'ordre
+          </label>
+          <Input
+            value={companyType}
+            onChange={(e) => setCompanyType(e.target.value)}
+            placeholder="Ex : Cimenterie & BTP, Négoce Import-Export..."
+            required
+          />
+        </div>
+      )}
+
       {/* Localisation / Base */}
       <div>
         <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-          {isOwner ? 'Base logistique / Ville' : 'Ville de résidence principale'}
+          {isOwner
+            ? 'Base logistique / Ville'
+            : isShipper
+            ? 'Siège / Site d’expédition principal'
+            : 'Ville de résidence principale'}
         </label>
         <Input
           value={city}
@@ -131,7 +182,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ role, onClose }) => {
       </div>
 
       {/* Champs spécifiques chauffeur */}
-      {!isOwner && (
+      {!isOwner && !isShipper && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -176,13 +227,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   onClose,
   role,
 }) => {
-  const isOwner = role === 'truck_owner'
+  const title =
+    role === 'truck_owner'
+      ? 'Modifier le profil Propriétaire'
+      : role === 'shipper'
+      ? 'Modifier le profil Donneur d’ordre (Chargeur)'
+      : 'Modifier le profil Chauffeur'
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isOwner ? 'Modifier le profil Propriétaire' : 'Modifier le profil Chauffeur'}
+      title={title}
       subtitle="Les modifications sont conservées localement dans votre navigateur pour cette démonstration."
       maxWidth="lg"
     >

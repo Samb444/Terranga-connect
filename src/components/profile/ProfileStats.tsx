@@ -8,18 +8,20 @@ import {
   Star,
   Activity,
 } from 'lucide-react'
+import type { UserRole } from '../../types'
 import { StatCard } from '../dashboard/StatCard'
 import { AvailabilityToggle } from '../dashboard/AvailabilityToggle'
 import { useTransport } from '../../hooks/useTransport'
 
 interface ProfileStatsProps {
-  role: 'truck_owner' | 'driver'
+  role: UserRole
 }
 
 export const ProfileStats: React.FC<ProfileStatsProps> = ({ role }) => {
   const {
     owner,
     driver,
+    shipper,
     trucks,
     opportunities,
     applications,
@@ -27,6 +29,60 @@ export const ProfileStats: React.FC<ProfileStatsProps> = ({ role }) => {
   } = useTransport()
 
   const isOwner = role === 'truck_owner'
+  const isShipper = role === 'shipper'
+
+  if (isShipper) {
+    const shipperExpeditions = opportunities.filter(
+      (o) =>
+        o.publishedBy?.includes('GMMS') ||
+        o.publishedBy?.includes('Sahel') ||
+        o.publishedBy?.includes('Grossiste') ||
+        o.publishedBy?.includes('Agri') ||
+        o.publishedBy?.includes('Bati') ||
+        o.publishedBy === shipper.companyName
+    )
+    const activeShipments = missions.filter(
+      (m) => m.status === 'confirmed' || m.status === 'in_progress'
+    )
+    return (
+      <div className="space-y-4">
+        <h2 className="text-base font-bold text-white flex items-center gap-2">
+          <Activity className="w-4 h-4 text-blue-400" />
+          <span>Statistiques Donneur d'ordre & Expéditions (Temps Réel)</span>
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Expéditions publiées"
+            value={String(shipperExpeditions.length)}
+            icon={<Compass className="w-5 h-5 text-blue-400" />}
+            subtext="Annonces actives"
+            accentColor="blue"
+          />
+          <StatCard
+            title="Missions en transit"
+            value={String(activeShipments.length)}
+            icon={<Route className="w-5 h-5 text-emerald-400" />}
+            subtext="Sur corridors routiers"
+            accentColor="emerald"
+          />
+          <StatCard
+            title="Tonnage confié"
+            value="185 T"
+            icon={<Truck className="w-5 h-5 text-amber-400" />}
+            subtext="Fret acheminé"
+            accentColor="amber"
+          />
+          <StatCard
+            title="Séquestre garanti"
+            value="100 %"
+            icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+            subtext="Fonds sécurisés"
+            accentColor="emerald"
+          />
+        </div>
+      </div>
+    )
+  }
 
   // Statistiques calculées depuis le state
   const ownerMissions = missions.filter((m) => m.ownerId === owner.id || isOwner)

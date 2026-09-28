@@ -31,6 +31,12 @@ const ProfilePage = lazy(() =>
 const NotificationsPage = lazy(() =>
   import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage }))
 )
+const ShipperDashboardPage = lazy(() =>
+  import('./pages/ShipperDashboardPage').then((m) => ({ default: m.ShipperDashboardPage }))
+)
+const AdminSupervisionPage = lazy(() =>
+  import('./pages/AdminSupervisionPage').then((m) => ({ default: m.AdminSupervisionPage }))
+)
 
 // Fallback de chargement cohérent avec le thème sombre Teranga Connect
 const PageLoadingFallback: React.FC = () => (
@@ -89,6 +95,12 @@ export const App: React.FC = () => {
 
             {/* Centre de notifications */}
             <Route path="/notifications" element={<NotificationsPage />} />
+
+            {/* Espace Chargeur & Donneur d'ordre */}
+            <Route path="/chargeur" element={<ShipperDashboardPage />} />
+
+            {/* Console de Supervision & Administration */}
+            <Route path="/admin" element={<AdminSupervisionPage />} />
 
             {/* Redirection fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

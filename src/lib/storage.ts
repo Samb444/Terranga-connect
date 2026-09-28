@@ -6,6 +6,7 @@
 export const STORAGE_KEYS = {
   OWNER: 'tc_demo_owner_v5',
   DRIVER: 'tc_demo_driver_v5',
+  SHIPPER: 'tc_demo_shipper_v5',
   TRUCKS: 'tc_demo_trucks_v5',
   OPPORTUNITIES: 'tc_demo_opportunities_v5',
   APPLICATIONS: 'tc_demo_applications_v5',

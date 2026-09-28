@@ -6,7 +6,6 @@ import {
   Bell,
   RotateCcw,
   ChevronDown,
-  ArrowRightLeft,
   Building2,
   CheckCircle2,
 } from 'lucide-react'
@@ -28,16 +27,38 @@ export const UserMenu: React.FC<UserMenuProps> = ({ className }) => {
   const {
     owner,
     driver,
+    shipper,
     activeRole,
     setActiveRole,
     unreadNotificationsCount,
   } = useTransport()
 
   const isOwner = activeRole === 'truck_owner'
-  const currentName = isOwner ? owner.fullName : driver.fullName
-  const initials = isOwner ? 'MD' : 'IN'
-  const roleLabel = isOwner ? 'Propriétaire' : 'Chauffeur'
-  const subLabel = isOwner ? owner.companyName : 'Chauffeur Poids Lourd'
+  const isDriver = activeRole === 'driver'
+  const isShipper = activeRole === 'shipper'
+  const isAdmin = activeRole === 'admin'
+
+  let currentName = owner.fullName
+  let initials = 'MD'
+  let roleLabel = 'Propriétaire'
+  let subLabel = owner.companyName
+
+  if (isDriver) {
+    currentName = driver.fullName
+    initials = 'IN'
+    roleLabel = 'Chauffeur'
+    subLabel = 'Chauffeur Poids Lourd'
+  } else if (isShipper) {
+    currentName = shipper.fullName
+    initials = 'AS'
+    roleLabel = 'Chargeur'
+    subLabel = shipper.companyName
+  } else if (isAdmin) {
+    currentName = 'Administration Teranga'
+    initials = 'TC'
+    roleLabel = 'Admin'
+    subLabel = 'Supervision Plateforme'
+  }
 
   // Fermer au clic extérieur
   useEffect(() => {
@@ -62,12 +83,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({ className }) => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
-
-  const handleToggleRole = () => {
-    const nextRole = isOwner ? 'driver' : 'truck_owner'
-    setActiveRole(nextRole)
-    setIsOpen(false)
-  }
 
   return (
     <>
@@ -145,18 +160,82 @@ export const UserMenu: React.FC<UserMenuProps> = ({ className }) => {
                 </div>
               </div>
 
-              {/* Bascule de profil rapide */}
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Rôle démo actif :</span>
-                <button
-                  type="button"
-                  onClick={handleToggleRole}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-amber-300 border border-slate-700/60 transition-colors cursor-pointer"
-                  title="Basculer entre le profil propriétaire et chauffeur"
-                >
-                  <ArrowRightLeft className="w-3 h-3 text-amber-400" />
-                  <span>Passer en {isOwner ? 'Chauffeur' : 'Propriétaire'}</span>
-                </button>
+              {/* Bascule de profil multi-rôles */}
+              <div className="pt-2 border-t border-slate-800/60 space-y-1.5 text-xs">
+                <span className="text-slate-400 block text-[11px]">Changer de rôle actif :</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRole('truck_owner')
+                      setIsOpen(false)
+                      navigate('/proprietaire')
+                    }}
+                    className={cn(
+                      'px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors text-left flex items-center justify-between',
+                      isOwner
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                    )}
+                  >
+                    <span>Propriétaire</span>
+                    {isOwner && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRole('driver')
+                      setIsOpen(false)
+                      navigate('/chauffeur')
+                    }}
+                    className={cn(
+                      'px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors text-left flex items-center justify-between',
+                      isDriver
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                    )}
+                  >
+                    <span>Chauffeur</span>
+                    {isDriver && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRole('shipper')
+                      setIsOpen(false)
+                      navigate('/chargeur')
+                    }}
+                    className={cn(
+                      'px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors text-left flex items-center justify-between',
+                      isShipper
+                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                    )}
+                  >
+                    <span>Chargeur</span>
+                    {isShipper && <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRole('admin')
+                      setIsOpen(false)
+                      navigate('/admin')
+                    }}
+                    className={cn(
+                      'px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors text-left flex items-center justify-between',
+                      isAdmin
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                    )}
+                  >
+                    <span>Admin</span>
+                    {isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -212,23 +291,45 @@ export const UserMenu: React.FC<UserMenuProps> = ({ className }) => {
               </Link>
 
               <Link
-                to={isOwner ? '/proprietaire' : '/chauffeur'}
+                to={isOwner ? '/proprietaire' : isDriver ? '/chauffeur' : isShipper ? '/chargeur' : '/admin'}
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-200 hover:text-white hover:bg-slate-800/80 transition-colors"
               >
                 {isOwner ? (
                   <Building2 className="w-4 h-4 text-amber-400" />
-                ) : (
+                ) : isDriver ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : isShipper ? (
+                  <Building2 className="w-4 h-4 text-sky-400" />
+                ) : (
+                  <Building2 className="w-4 h-4 text-purple-400" />
                 )}
                 <div className="flex-1">
                   <span className="font-semibold block">
-                    Espace {isOwner ? 'Propriétaire' : 'Chauffeur'}
+                    Mon Espace Actif ({roleLabel})
                   </span>
                   <span className="text-[11px] text-slate-400 block">
                     Tableau de bord opérationnel
                   </span>
                 </div>
+              </Link>
+
+              <Link
+                to="/chargeur"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors"
+              >
+                <Building2 className="w-3.5 h-3.5 text-sky-400" />
+                <span className="text-xs">Espace Chargeur & Donneur d'ordre</span>
+              </Link>
+
+              <Link
+                to="/admin"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors"
+              >
+                <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-xs">Supervision Plateforme & Admin</span>
               </Link>
             </div>
 

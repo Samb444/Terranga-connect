@@ -22,20 +22,27 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { DiscoveryModal } from '../components/modals/DiscoveryModal'
 
+import type { UserRole } from '../types'
+
 export const ProfilePage: React.FC = () => {
-  const { owner, driver, activeRole, setActiveRole } = useTransport()
-  const [selectedRole, setSelectedRole] = useState<'truck_owner' | 'driver'>(activeRole)
+  const { owner, driver, shipper, activeRole, setActiveRole } = useTransport()
+  const [selectedRole, setSelectedRole] = useState<UserRole>(activeRole)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false)
 
   const isOwner = selectedRole === 'truck_owner'
+  const isDriver = selectedRole === 'driver'
+  const isShipper = selectedRole === 'shipper'
 
   const handleToggleRole = () => {
-    const nextRole = isOwner ? 'driver' : 'truck_owner'
+    const nextRole: UserRole = isOwner ? 'driver' : isDriver ? 'shipper' : 'truck_owner'
     setSelectedRole(nextRole)
     setActiveRole(nextRole)
   }
+
+  const roleDestination = isOwner ? '/proprietaire' : isShipper ? '/chargeur' : '/chauffeur'
+  const roleNameLabel = isOwner ? 'Propriétaire' : isShipper ? 'Chargeur' : 'Chauffeur'
 
   return (
     <div className="min-h-screen flex flex-col bg-[#070d1e] text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -46,11 +53,11 @@ export const ProfilePage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div className="space-y-1">
             <Link
-              to={isOwner ? '/proprietaire' : '/chauffeur'}
+              to={roleDestination}
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Retour à l'espace {isOwner ? 'Propriétaire' : 'Chauffeur'}</span>
+              <span>Retour à l'espace {roleNameLabel}</span>
             </Link>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
               <span>Profil Utilisateur</span>
@@ -80,6 +87,7 @@ export const ProfilePage: React.FC = () => {
           role={selectedRole}
           owner={owner}
           driver={driver}
+          shipper={shipper}
           onEditClick={() => setIsEditModalOpen(true)}
           onToggleRole={handleToggleRole}
         />
@@ -100,7 +108,7 @@ export const ProfilePage: React.FC = () => {
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
                 <span className="text-slate-400">Nom complet</span>
                 <span className="font-bold text-white text-sm">
-                  {isOwner ? owner.fullName : driver.fullName}
+                  {isOwner ? owner.fullName : isShipper ? shipper.fullName : driver.fullName}
                 </span>
               </div>
 
@@ -108,7 +116,7 @@ export const ProfilePage: React.FC = () => {
                 <span className="text-slate-400">Téléphone de contact</span>
                 <span className="font-semibold text-amber-300 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{isOwner ? owner.phone : driver.phone}</span>
+                  <span>{isOwner ? owner.phone : isShipper ? shipper.phone : driver.phone}</span>
                 </span>
               </div>
 
@@ -116,7 +124,7 @@ export const ProfilePage: React.FC = () => {
                 <span className="text-slate-400">Localisation principale</span>
                 <span className="font-semibold text-white flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{isOwner ? owner.city : driver.currentCity}</span>
+                  <span>{isOwner ? owner.city : isShipper ? shipper.city : driver.currentCity}</span>
                 </span>
               </div>
 
@@ -135,12 +143,16 @@ export const ProfilePage: React.FC = () => {
             <h3 className="text-base font-bold text-white flex items-center gap-2 pb-3 border-b border-slate-800">
               {isOwner ? (
                 <Building2 className="w-4 h-4 text-amber-400" />
+              ) : isShipper ? (
+                <Building2 className="w-4 h-4 text-blue-400" />
               ) : (
                 <Award className="w-4 h-4 text-emerald-400" />
               )}
               <span>
                 {isOwner
                   ? 'Activité de transport & flotte'
+                  : isShipper
+                  ? 'Activité Donneur d’ordre & Expéditions'
                   : 'Compétences & Habilitations de conduite'}
               </span>
             </h3>
@@ -168,6 +180,32 @@ export const ProfilePage: React.FC = () => {
                   <span className="text-slate-400">Zone d'intervention</span>
                   <span className="font-semibold text-white">
                     Sénégal & Corridors Sous-Régionaux
+                  </span>
+                </div>
+              </div>
+            ) : isShipper ? (
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <span className="text-slate-400">Raison sociale / Entité</span>
+                  <span className="font-bold text-white">{shipper.companyName}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <span className="text-slate-400">Secteur d'activité</span>
+                  <span className="font-semibold text-blue-300">{shipper.companyType}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <span className="text-slate-400">Expéditions cumulées</span>
+                  <span className="font-semibold text-amber-300">
+                    {shipper.totalShipmentsCount} rotations enregistrées
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <span className="text-slate-400">Sécurisation des paiements</span>
+                  <span className="font-semibold text-emerald-300">
+                    Compte séquestre Teranga Connect (Wave / Orange Money)
                   </span>
                 </div>
               </div>

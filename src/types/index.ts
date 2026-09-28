@@ -3,7 +3,7 @@
  * Plateforme de fret routier et mise en relation camions - chauffeurs - opportunités
  */
 
-export type UserRole = 'truck_owner' | 'driver' | 'dispatcher' | 'admin'
+export type UserRole = 'truck_owner' | 'driver' | 'shipper' | 'admin'
 
 /**
  * Types de véhicules de fret courants au Sénégal et dans la sous-région
@@ -68,6 +68,22 @@ export interface Owner {
   city: string
   truckCount: number
   activeMissionsCount: number
+  isDemo: boolean
+  memberSince?: string
+}
+
+/**
+ * Structure d'un donneur d'ordre / chargeur (Cimenteries, Import-Export, Coopératives Agricoles, BTP)
+ */
+export interface Shipper {
+  id: string
+  fullName: string
+  companyName: string
+  companyType: string
+  phone: string
+  city: string
+  activeShipmentsCount: number
+  totalShipmentsCount: number
   isDemo: boolean
   memberSince?: string
 }
@@ -166,7 +182,7 @@ export interface OperationalEvent {
   location?: string
   timestamp: string
   authorName?: string
-  authorRole?: 'driver' | 'truck_owner' | 'system'
+  authorRole?: UserRole | 'system'
   notes?: string
 }
 
@@ -203,6 +219,8 @@ export interface Mission {
   missionCode: string
   opportunityId: string
   applicationId?: string
+  shipperId?: string
+  shipperName?: string
   ownerId: string
   ownerName: string
   driverId: string
@@ -315,7 +333,7 @@ export interface AppNotification {
   createdAt: string
   relatedId?: string
   link?: string
-  targetRole?: 'truck_owner' | 'driver' | 'all'
+  targetRole?: 'truck_owner' | 'driver' | 'shipper' | 'admin' | 'all'
 }
 
 /**

@@ -3,15 +3,18 @@ import type {
   Truck,
   Driver,
   Owner,
+  Shipper,
   Opportunity,
   Trip,
   Application,
   Mission,
   AppNotification,
+  UserRole,
 } from '../types'
 import {
   MOCK_OWNER,
   MOCK_DRIVER,
+  MOCK_SHIPPER,
   MOCK_TRUCKS,
   MOCK_OPPORTUNITIES,
   MOCK_TRIPS,
@@ -39,10 +42,12 @@ export interface TransportContextType {
   // Profils & Rôles
   owner: Owner
   driver: Driver
-  activeRole: 'truck_owner' | 'driver'
-  setActiveRole: (role: 'truck_owner' | 'driver') => void
+  shipper: Shipper
+  activeRole: UserRole
+  setActiveRole: (role: UserRole) => void
   updateOwnerProfile: (updatedData: Partial<Owner>) => void
   updateDriverProfile: (updatedData: Partial<Driver>) => void
+  updateShipperProfile: (updatedData: Partial<Shipper>) => void
 
   // Données métier
   trucks: Truck[]
@@ -88,7 +93,9 @@ export interface TransportContextType {
     truckCategoryLabel: string
     departureDate: string
     description: string
+    estimatedPrice?: string
     isReturnTrip?: boolean
+    publishedBy?: string
   }) => Opportunity
   acceptApplication: (
     applicationId: string,
@@ -137,8 +144,12 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     loadFromStorage<Driver>(STORAGE_KEYS.DRIVER, MOCK_DRIVER)
   )
 
-  const [activeRole, setActiveRoleState] = useState<'truck_owner' | 'driver'>(() =>
-    loadFromStorage<'truck_owner' | 'driver'>(STORAGE_KEYS.ACTIVE_ROLE, 'truck_owner')
+  const [shipper, setShipper] = useState<Shipper>(() =>
+    loadFromStorage<Shipper>(STORAGE_KEYS.SHIPPER, MOCK_SHIPPER)
+  )
+
+  const [activeRole, setActiveRoleState] = useState<UserRole>(() =>
+    loadFromStorage<UserRole>(STORAGE_KEYS.ACTIVE_ROLE, 'truck_owner')
   )
 
   const [trucks, setTrucks] = useState<Truck[]>(() =>
@@ -182,6 +193,10 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [driver])
 
   useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SHIPPER, shipper)
+  }, [shipper])
+
+  useEffect(() => {
     saveToStorage(STORAGE_KEYS.ACTIVE_ROLE, activeRole)
   }, [activeRole])
 
@@ -214,7 +229,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [notifications])
 
   // Rôle actif
-  const setActiveRole = (role: 'truck_owner' | 'driver') => {
+  const setActiveRole = (role: UserRole) => {
     setActiveRoleState(role)
   }
 
@@ -228,6 +243,13 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateDriverProfile = (updatedData: Partial<Driver>) => {
     setDriver((prev) => ({
+      ...prev,
+      ...updatedData,
+    }))
+  }
+
+  const updateShipperProfile = (updatedData: Partial<Shipper>) => {
+    setShipper((prev) => ({
       ...prev,
       ...updatedData,
     }))
@@ -337,7 +359,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     })
   }
 
-  // Propriétaire Publication Opportunité
+  // Publication Opportunité (par un Chargeur ou un Propriétaire)
   const publishOpportunity = (newOppData: {
     origin: string
     destination: string
@@ -347,12 +369,18 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     truckCategoryLabel: string
     departureDate: string
     description: string
+    estimatedPrice?: string
     isReturnTrip?: boolean
+    publishedBy?: string
   }): Opportunity => {
     const isReturn =
       newOppData.isReturnTrip ??
       (newOppData.destination.toLowerCase() === 'dakar' &&
         newOppData.origin.toLowerCase() !== 'dakar')
+
+    const publisher =
+      newOppData.publishedBy ||
+      (activeRole === 'shipper' ? shipper.companyName : owner.companyName)
 
     const newOpp: Opportunity = {
       id: `opp-demo-${Date.now()}`,
@@ -367,7 +395,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       truckCategoryLabel: newOppData.truckCategoryLabel,
       status: 'available',
       isReturnTrip: isReturn,
-      estimatedPrice: 'Tarif indicatif à convenir',
+      estimatedPrice: newOppData.estimatedPrice || 'Tarif indicatif à convenir',
       description: newOppData.description,
       indicativeConditions: [
         'Contrat type de fret Teranga Connect (Simulation)',
@@ -375,7 +403,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ],
       badgeNotice: 'Démonstration',
       createdAt: new Date().toISOString().split('T')[0],
-      publishedBy: owner.companyName,
+      publishedBy: publisher,
     }
 
     setOpportunities((prev) => [newOpp, ...prev])
@@ -488,6 +516,8 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       opportunityId: app.opportunityId,
       opportunityTitle: opp?.title,
       applicationId: app.id,
+      shipperId: opp?.publishedBy ? 'shipper-demo-1' : undefined,
+      shipperName: opp?.publishedBy || 'Donneur d’ordre (Chargeur)',
       ownerId: owner.id,
       ownerName: owner.companyName,
       driverId: app.driverId,
@@ -545,6 +575,16 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       relatedId: newMission.id,
       link: `/missions/${newMission.id}`,
       targetRole: 'driver',
+    })
+
+    // Notification côté Chargeur
+    addNotification({
+      type: 'mission',
+      title: 'Transporteur affecté à votre expédition',
+      message: `Votre demande de fret (${newMission.origin} → ${newMission.destination}) a été prise en charge par ${newMission.ownerName} avec le véhicule ${newMission.truckMatricule}.`,
+      relatedId: newMission.id,
+      link: `/missions/${newMission.id}`,
+      targetRole: 'shipper',
     })
 
     return { application: updatedApplication, mission: newMission }
@@ -1139,6 +1179,7 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     clearAllDemoStorage()
     setOwner(MOCK_OWNER)
     setDriver(MOCK_DRIVER)
+    setShipper(MOCK_SHIPPER)
     setActiveRoleState('truck_owner')
     setTrucks(MOCK_TRUCKS)
     setOpportunities(MOCK_OPPORTUNITIES)
@@ -1154,10 +1195,12 @@ export const TransportProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       value={{
         owner,
         driver,
+        shipper,
         activeRole,
         setActiveRole,
         updateOwnerProfile,
         updateDriverProfile,
+        updateShipperProfile,
         trucks,
         opportunities,
         trips,

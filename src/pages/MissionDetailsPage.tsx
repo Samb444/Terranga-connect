@@ -540,16 +540,16 @@ export const MissionDetailsPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Modèle économique & Décomposition financière */}
+            {/* Modèle économique & Décomposition financière (Cahier des charges : 30% aller / 40% retour / séquestre / avance carburant) */}
             <Card className="bg-slate-900/90 border-slate-800 p-6 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
                 <Coins className="w-4 h-4 text-amber-400" />
-                <h3 className="text-base font-bold text-white">Modèle économique indicatif</h3>
+                <h3 className="text-base font-bold text-white">Modèle économique & Règlements</h3>
               </div>
 
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-400">Montant fret brut estimé :</span>
+                  <span className="text-slate-400">Montant fret brut convenu :</span>
                   <span className="font-bold text-white">{economics.totalFormatted}</span>
                 </div>
 
@@ -563,7 +563,7 @@ export const MissionDetailsPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between py-1 border-t border-slate-800/60">
-                  <span className="text-slate-400">Net estimé transporteur / chauffeur :</span>
+                  <span className="text-slate-400">Net versé au transporteur :</span>
                   <span className="font-bold text-emerald-400">
                     {economics.driverNetFormatted}
                   </span>
@@ -577,14 +577,56 @@ export const MissionDetailsPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Cycle Séquestre & Règlements (Wave / Orange Money) */}
+              <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                <span className="text-[10px] uppercase font-bold text-sky-400 tracking-wider block">
+                  Cycle de Séquestre & Libération des Fonds
+                </span>
+                
+                <div className="space-y-2 text-[11px]">
+                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                    <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                      ✓
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white">Pré-paiement Donneur d'Ordre :</span>
+                      <p className="text-slate-400 text-[10px]">Fonds consignés à 100% sur compte séquestre avant chargement.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                    <div className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                      {mission.status === 'in_progress' || mission.status === 'completed' ? '✓' : '2'}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white">Bon Carburant / Péages :</span>
+                      <p className="text-slate-400 text-[10px]">Avance numérique (12%) débloquée dès le départ confirmé.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                    <div className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                      {mission.status === 'completed' ? '✓' : '3'}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white">Solde Net Wave / Orange Money :</span>
+                      <p className="text-slate-400 text-[10px]">
+                        {mission.status === 'completed' 
+                          ? 'Transféré au transporteur suite à validation du bordereau émargé.'
+                          : 'Versé automatiquement sous 2h dès confirmation du bordereau de livraison.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Mention obligatoire */}
               <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
                 <span className="font-semibold text-slate-300 block">
-                  Hypothèses de démonstration :
+                  Règles économiques du cahier des charges :
                 </span>
                 <p className="leading-relaxed">
-                  Modèle économique indicatif : 30 % sur trajet aller, 40 % sur retour optimisé,
-                  abonnement matériel 30 000 FCFA/mois. Aucun paiement réel n’est déclenché.
+                  30 % sur trajet aller, 40 % sur retour optimisé, abonnement matériel 30 000 FCFA/mois. Séquestre garanti protégeant transporteurs et donneurs d'ordre.
                 </p>
               </div>
             </Card>

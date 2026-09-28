@@ -1,4 +1,4 @@
-import type { Truck, Driver, Owner, Opportunity, Trip, TruckCategory, AppNotification } from '../types'
+import type { Truck, Driver, Owner, Shipper, Opportunity, Trip, TruckCategory, AppNotification } from '../types'
 import { buildMissionTimeline } from '../lib/missionUtils'
 
 /**
@@ -45,6 +45,22 @@ export const MOCK_OWNER: Owner = {
   activeMissionsCount: 1,
   isDemo: true,
   memberSince: '15 Janvier 2026 [Démonstration]',
+}
+
+/**
+ * Profil chargeur / donneur d'ordre pour la démonstration (Cimenteries, Négoce, Import-Export)
+ */
+export const MOCK_SHIPPER: Shipper = {
+  id: 'shipper-demo-1',
+  fullName: 'Amadou Sylla',
+  companyName: 'Grands Moulins & Matériaux du Sahel (GMMS)',
+  companyType: 'Négoce Agroalimentaire & Matériaux BTP',
+  phone: '+221 78 *** ** 65 [Fictif]',
+  city: 'Dakar (Zone Portuaire / Bel-Air)',
+  activeShipmentsCount: 2,
+  totalShipmentsCount: 48,
+  isDemo: true,
+  memberSince: '10 Décembre 2025 [Démonstration]',
 }
 
 /**
