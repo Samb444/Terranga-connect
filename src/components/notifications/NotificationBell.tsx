@@ -46,22 +46,25 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className })
   const recentNotifications = notifications.slice(0, 5)
 
   return (
-    <div className={cn('relative inline-block text-left', className)} ref={dropdownRef}>
-      {/* Bouton cloche */}
+    <div className={cn('relative inline-block text-left shrink-0', className)} ref={dropdownRef}>
+      {/* Bouton cloche fixe 40x40 */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'relative p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500',
+          'relative w-10 h-10 min-w-10 max-w-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0 cursor-pointer',
           isOpen && 'bg-slate-800 text-amber-400 border-slate-700/60'
         )}
-        aria-label={`Centre de notifications - ${unreadNotificationsCount} non lues`}
+        aria-label="Notifications"
         aria-expanded={isOpen}
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-5 h-5 shrink-0" />
 
         {unreadNotificationsCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[11px] flex items-center justify-center shadow-lg shadow-amber-900/40 animate-pulse">
+          <span
+            className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[10px] flex items-center justify-center shadow-md shadow-amber-950/40 pointer-events-none"
+            aria-hidden="true"
+          >
             {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
           </span>
         )}

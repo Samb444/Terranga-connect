@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --breakpoint-2xl: 1440px;
   --color-teranga-dark: #070d1e;
   --color-teranga-card: #0f172a;
   --color-teranga-card-hover: #1e293b;
@@ -14,6 +15,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
 }
 
 html,
@@ -27,7 +29,7 @@ body {
   font-family: var(--font-sans);
   background-color: #070d1e;
   color: #f1f5f9;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Accessibilité & respect des préférences de mouvement */
